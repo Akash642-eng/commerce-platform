@@ -205,3 +205,43 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+# Docker
+docker-data/
+postgres_data/
+*.log
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Node / React (future frontend)
+node_modules/
+build/
+dist/
+.next/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# IntelliJ / PyCharm
+.idea/
+
+# Coverage / testing
+coverage/
+.coverage
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Database dumps
+*.sql
+*.dump

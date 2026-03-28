@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: commerce-db
+    environment:
+      POSTGRES_USER: commerce
+      POSTGRES_PASSWORD: commerce
+      POSTGRES_DB: commerce_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  auth-service:
+    build: ./backend/auth-service
+    container_name: auth-service
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db
+      JWT_SECRET: supersecretkey
+
+  product-service:
+    build: ./backend/product-service
+    container_name: product-service
+    ports:
+      - "8001:8000"
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db
+
+
+  user-service:
+    build: ./backend/user-service
+    container_name: user-service
+    ports:
+      - "8003:8000"
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db  
+
+volumes:
+  postgres_data:
