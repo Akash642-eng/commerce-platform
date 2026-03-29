@@ -51,7 +51,68 @@ services:
     depends_on:
       - postgres
     environment:
-      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db      
+      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db     
+
+  cart-service:
+    build: ./backend/cart-service
+    container_name: cart-service
+    ports:
+      - "8005:8000"
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db 
+
+  order-service:
+    build: ./backend/order-service
+    container_name: order-service
+    ports:
+      - "8006:8000"
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db
+
+  payment-service:
+    build: ./backend/payment-service
+    container_name: payment-service
+    ports:
+      - "8007:8000"
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db    
+
+  delivery-service:
+    build: ./backend/delivery-service
+    container_name: delivery-service
+    ports:
+      - "8008:8000"
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db
+
+  notification-service:
+    build: ./backend/notification-service
+    container_name: notification-service
+    ports:
+      - "8009:8000"
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db
+
+
+  support-service:
+    build: ./backend/support-service
+    container_name: support-service
+    ports:
+      - "8010:8000"
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db
 
 volumes:
   postgres_data:
