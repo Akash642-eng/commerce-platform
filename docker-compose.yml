@@ -43,5 +43,15 @@ services:
     environment:
       DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db  
 
+  inventory-service:
+    build: ./backend/inventory-service
+    container_name: inventory-service
+    ports:
+      - "8004:8000"
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db      
+
 volumes:
   postgres_data:
