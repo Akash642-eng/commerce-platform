@@ -2,8 +2,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from ..database import get_db
 from .. import models, schemas
+from ..rabbitmq_producer import publish_event
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
+
 
 @router.post("/")
 def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
@@ -32,6 +34,13 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
     db.add(status)
 
     db.commit()
+
+    # Send event to RabbitMQ
+    publish_event("order_created", {
+        "order_id": new_order.id,
+        "user_id": str(new_order.user_id),
+        "amount": float(new_order.total_amount)
+    })
 
     return {"order_id": new_order.id, "status": "CREATED"}
 

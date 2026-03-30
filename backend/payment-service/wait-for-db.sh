@@ -7,5 +7,9 @@ while ! nc -z postgres 5432; do
 done
 
 echo "PostgreSQL started"
+echo "Starting Uvicorn..."
 
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+cd /app
+export PYTHONPATH=/app
+
+exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --lifespan on

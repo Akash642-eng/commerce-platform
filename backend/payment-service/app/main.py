@@ -1,13 +1,27 @@
 from fastapi import FastAPI
-from .database import engine, Base
-from .routes import payments
+import threading
+import time
+from .rabbitmq_consumer import start_consumer
 
-app = FastAPI(title="Payment Service")
+app = FastAPI()
 
-Base.metadata.create_all(bind=engine)
+def consumer_worker():
+    while True:
+        try:
+            print("Starting RabbitMQ consumer...")
+            start_consumer()
+        except Exception as e:
+            print("RabbitMQ connection failed. Retrying in 5 seconds...")
+            print(e)
+            time.sleep(5)
 
-app.include_router(payments.router)
+@app.on_event("startup")
+def startup_event():
+    print("APP STARTUP - Starting RabbitMQ thread")
+    thread = threading.Thread(target=consumer_worker)
+    thread.daemon = True
+    thread.start()
 
 @app.get("/")
 def root():
-    return {"service": "Payment Service Running"}
+    return {"message": "Payment Service Running"}
