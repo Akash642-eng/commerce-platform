@@ -4,6 +4,7 @@ from ..database import get_db
 from .. import models, schemas
 from ..rabbitmq_producer import publish_event
 
+
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
 

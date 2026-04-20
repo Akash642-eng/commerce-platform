@@ -1,26 +1,18 @@
 from fastapi import FastAPI
 import threading
-import time
 from .rabbitmq_consumer import start_consumer
 
 app = FastAPI()
 
-def consumer_worker():
-    while True:
-        try:
-            print("Starting RabbitMQ consumer...")
-            start_consumer()
-        except Exception as e:
-            print("RabbitMQ connection failed. Retrying in 5 seconds...")
-            print(e)
-            time.sleep(5)
+def start_background_consumer():
+    print("🔥 MANUAL START: launching RabbitMQ consumer thread", flush=True)
 
-@app.on_event("startup")
-def startup_event():
-    print("APP STARTUP - Starting RabbitMQ thread")
-    thread = threading.Thread(target=consumer_worker)
+    thread = threading.Thread(target=start_consumer)
     thread.daemon = True
     thread.start()
+
+# 🚨 START THREAD IMMEDIATELY (not waiting for FastAPI events)
+start_background_consumer()
 
 @app.get("/")
 def root():
