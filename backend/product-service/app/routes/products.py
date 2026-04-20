@@ -20,7 +20,6 @@ def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)
     db.commit()
     db.refresh(new_product)
 
-    # Clear cache when new product added
     redis_client.delete("products")
 
     return new_product
@@ -28,13 +27,11 @@ def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)
 
 @router.get("/")
 def get_products(db: Session = Depends(get_db)):
-    # Check Redis cache first
     cached_products = redis_client.get("products")
 
     if cached_products:
         return json.loads(cached_products)
 
-    # If not in cache, get from DB
     products = db.query(models.Product).all()
 
     result = []
@@ -47,7 +44,7 @@ def get_products(db: Session = Depends(get_db)):
             "category_id": p.category_id
         })
 
-    # Store in Redis for 60 seconds
+
     redis_client.set("products", json.dumps(result), ex=60)
 
     return result

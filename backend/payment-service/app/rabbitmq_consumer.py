@@ -22,7 +22,7 @@ def publish_payment_event(channel, data):
         routing_key="payment_completed",
         body=json.dumps(event),
         properties=pika.BasicProperties(
-            delivery_mode=2  # persistent message
+            delivery_mode=2  
         )
     )
 
@@ -36,13 +36,11 @@ def callback(ch, method, properties, body):
         print("✅ Received order event:", data, flush=True)
         print("💳 Processing payment for order:", data["order_id"], flush=True)
 
-        # simulate processing delay (optional)
         time.sleep(1)
 
-        # publish result
         publish_payment_event(ch, data)
 
-        # ACK only after success
+    
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
         print("✅ Payment processed + ACK sent", flush=True)
@@ -70,10 +68,8 @@ def start_consumer():
 
             channel = connection.channel()
 
-            # IMPORTANT: must match producer (durable=True)
             channel.queue_declare(queue="order_created", durable=True)
 
-            # fair dispatch
             channel.basic_qos(prefetch_count=1)
 
             channel.basic_consume(

@@ -11,7 +11,6 @@ def start_background_consumer():
     thread.daemon = True
     thread.start()
 
-# 🚨 START THREAD IMMEDIATELY (not waiting for FastAPI events)
 start_background_consumer()
 
 @app.get("/")
