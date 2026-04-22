@@ -6,27 +6,38 @@ import time
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 
 
-def publish_payment_event(channel, data):
+def publish_payment_event(data):
     """
-    Publish payment result back to RabbitMQ
+    Publish payment result back to RabbitMQ (separate connection)
     """
-    event = {
-        "order_id": data["order_id"],
-        "status": "SUCCESS"
-    }
-
-    channel.queue_declare(queue="payment_completed", durable=True)
-
-    channel.basic_publish(
-        exchange='',
-        routing_key="payment_completed",
-        body=json.dumps(event),
-        properties=pika.BasicProperties(
-            delivery_mode=2  
+    try:
+        connection = pika.BlockingConnection(
+            pika.ConnectionParameters(host=RABBITMQ_HOST)
         )
-    )
+        channel = connection.channel()
 
-    print("📤 Sent payment_completed event:", event, flush=True)
+        event = {
+            "order_id": data["order_id"],
+            "status": "SUCCESS"
+        }
+
+        channel.queue_declare(queue="payment_completed", durable=True)
+
+        channel.basic_publish(
+            exchange='',
+            routing_key="payment_completed",
+            body=json.dumps(event),
+            properties=pika.BasicProperties(
+                delivery_mode=2
+            )
+        )
+
+        print("📤 Sent payment_completed event:", event, flush=True)
+
+        connection.close()
+
+    except Exception as e:
+        print("❌ Failed to publish payment event:", str(e), flush=True)
 
 
 def callback(ch, method, properties, body):
@@ -38,9 +49,9 @@ def callback(ch, method, properties, body):
 
         time.sleep(1)
 
-        publish_payment_event(ch, data)
+        # 🔥 FIX: publish using separate connection
+        publish_payment_event(data)
 
-    
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
         print("✅ Payment processed + ACK sent", flush=True)
