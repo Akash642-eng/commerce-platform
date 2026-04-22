@@ -15,9 +15,12 @@ app.include_router(inventory.router)
 def root():
     return {"service": "Inventory Service Running"}
 
+
 def start_inventory():
     thread = threading.Thread(target=start_consumer)
     thread.daemon = True
     thread.start()
 
+
+# Start consumer immediately
 start_inventory()
