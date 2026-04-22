@@ -84,7 +84,7 @@ def start_consumer():
             channel.basic_qos(prefetch_count=1)
 
             channel.basic_consume(
-                queue="order_created",
+                queue="inventory_reserved",
                 on_message_callback=callback,
                 auto_ack=False
             )
