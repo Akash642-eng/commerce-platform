@@ -65,5 +65,10 @@ def start_consumer():
             channel.start_consuming()
 
         except Exception as e:
-            print("❌ Retry:", str(e), flush=True)
+            import traceback
+
+            print("❌ Retry ERROR:", repr(e), flush=True)
+            traceback.print_exc()
+
+            print("🔁 Retrying in 5 seconds...", flush=True)
             time.sleep(5)
