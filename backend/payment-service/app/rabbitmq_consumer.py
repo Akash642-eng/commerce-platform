@@ -2,6 +2,7 @@ import pika
 import json
 import os
 import time
+import random
 
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 
@@ -13,21 +14,41 @@ def publish_payment_event(data):
         )
         channel = connection.channel()
 
-        event = {
-            "order_id": data["order_id"],
-            "status": "SUCCESS"
-        }
+        is_success = random.choice([True, False])
 
-        channel.queue_declare(queue="payment_completed", durable=True)
+        if is_success:
+            event = {
+                "order_id": data["order_id"],
+                "status": "SUCCESS"
+            }
 
-        channel.basic_publish(
-            exchange='',
-            routing_key="payment_completed",
-            body=json.dumps(event),
-            properties=pika.BasicProperties(delivery_mode=2)
-        )
+            channel.queue_declare(queue="payment_completed", durable=True)
 
-        print("📤 Sent payment_completed event:", event, flush=True)
+            channel.basic_publish(
+                exchange='',
+                routing_key="payment_completed",
+                body=json.dumps(event),
+                properties=pika.BasicProperties(delivery_mode=2)
+            )
+
+            print("📤 Sent payment_completed event:", event, flush=True)
+
+        else:
+            event = {
+                "order_id": data["order_id"],
+                "status": "FAILED"
+            }
+
+            channel.queue_declare(queue="payment_failed", durable=True)
+
+            channel.basic_publish(
+                exchange='',
+                routing_key="payment_failed",
+                body=json.dumps(event),
+                properties=pika.BasicProperties(delivery_mode=2)
+            )
+
+            print("❌ Sent payment_failed event:", event, flush=True)
 
         connection.close()
 
@@ -68,8 +89,10 @@ def start_consumer():
 
             channel = connection.channel()
 
+
             channel.queue_declare(queue="inventory_reserved", durable=True)
             channel.queue_declare(queue="payment_completed", durable=True)
+            channel.queue_declare(queue="payment_failed", durable=True)
 
             channel.basic_qos(prefetch_count=1)
 

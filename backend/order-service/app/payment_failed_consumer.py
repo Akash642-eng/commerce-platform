@@ -1,0 +1,60 @@
+import pika
+import json
+import os
+import time
+from .database import SessionLocal
+from .models import Order
+
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
+
+
+def callback(ch, method, properties, body):
+    db = SessionLocal()
+
+    try:
+        data = json.loads(body)
+
+        print("❌ Payment failed event received:", data, flush=True)
+
+        order = db.query(Order).filter(Order.id == data["order_id"]).first()
+
+        if order:
+            order.status = "FAILED"
+            db.commit()
+
+            print(f"🚫 Order {order.id} marked as FAILED", flush=True)
+
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    except Exception as e:
+        print("❌ Error:", str(e), flush=True)
+
+    finally:
+        db.close()
+
+
+def start_failed_consumer():
+    print("🚀 Payment FAILED consumer started", flush=True)
+
+    while True:
+        try:
+            connection = pika.BlockingConnection(
+                pika.ConnectionParameters(host=RABBITMQ_HOST)
+            )
+
+            channel = connection.channel()
+
+            channel.queue_declare(queue="payment_failed", durable=True)
+
+            channel.basic_consume(
+                queue="payment_failed",
+                on_message_callback=callback,
+                auto_ack=False
+            )
+
+            print("📡 Waiting for payment_failed events...", flush=True)
+            channel.start_consuming()
+
+        except Exception as e:
+            print("❌ Retry:", str(e), flush=True)
+            time.sleep(5)
