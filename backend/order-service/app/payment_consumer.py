@@ -7,6 +7,7 @@ from .models import Order
 
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 
+
 def callback(ch, method, properties, body):
     db = SessionLocal()
 
@@ -17,7 +18,7 @@ def callback(ch, method, properties, body):
 
         order = db.query(Order).filter(Order.id == data["order_id"]).first()
 
-        if order:
+        if order and order.status != "PAID":
             order.status = "PAID"
             db.commit()
             print(f"✅ Order {order.id} marked as PAID", flush=True)
@@ -54,5 +55,5 @@ def start_payment_consumer():
             channel.start_consuming()
 
         except Exception as e:
-            print("❌ Retry:", str(e), flush=True)
+            print("❌ Retry:", repr(e), flush=True)
             time.sleep(5)

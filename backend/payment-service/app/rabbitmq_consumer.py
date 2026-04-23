@@ -7,9 +7,6 @@ RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 
 
 def publish_payment_event(data):
-    """
-    Publish payment result back to RabbitMQ (separate connection)
-    """
     try:
         connection = pika.BlockingConnection(
             pika.ConnectionParameters(host=RABBITMQ_HOST)
@@ -27,9 +24,7 @@ def publish_payment_event(data):
             exchange='',
             routing_key="payment_completed",
             body=json.dumps(event),
-            properties=pika.BasicProperties(
-                delivery_mode=2
-            )
+            properties=pika.BasicProperties(delivery_mode=2)
         )
 
         print("📤 Sent payment_completed event:", event, flush=True)
@@ -44,12 +39,10 @@ def callback(ch, method, properties, body):
     try:
         data = json.loads(body)
 
-        print("✅ Received order event:", data, flush=True)
         print("💳 Processing payment for order:", data["order_id"], flush=True)
 
         time.sleep(1)
 
-        # 🔥 FIX: publish using separate connection
         publish_payment_event(data)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -61,12 +54,10 @@ def callback(ch, method, properties, body):
 
 
 def start_consumer():
-    print("🚀 Consumer function ENTERED", flush=True)
+    print("🚀 Payment consumer started", flush=True)
 
     while True:
         try:
-            print("🔌 Trying to connect to RabbitMQ...", flush=True)
-
             connection = pika.BlockingConnection(
                 pika.ConnectionParameters(
                     host=RABBITMQ_HOST,
@@ -75,11 +66,10 @@ def start_consumer():
                 )
             )
 
-            print("✅ Connected to RabbitMQ", flush=True)
-
             channel = connection.channel()
 
-            channel.queue_declare(queue="order_created", durable=True)
+            channel.queue_declare(queue="inventory_reserved", durable=True)
+            channel.queue_declare(queue="payment_completed", durable=True)
 
             channel.basic_qos(prefetch_count=1)
 
@@ -89,14 +79,12 @@ def start_consumer():
                 auto_ack=False
             )
 
-            print("📡 Waiting for order events...", flush=True)
+            print("📡 Waiting for inventory_reserved...", flush=True)
             channel.start_consuming()
 
         except Exception as e:
-            print("❌ ERROR in consumer:", str(e), flush=True)
-
             import traceback
+            print("❌ ERROR:", repr(e), flush=True)
             traceback.print_exc()
-
             print("🔁 Retrying in 5 seconds...", flush=True)
             time.sleep(5)

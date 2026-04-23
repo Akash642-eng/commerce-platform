@@ -5,7 +5,13 @@ import time
 
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 
-def publish_inventory_event(channel, data):
+
+def publish_inventory_event(data):
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(host=RABBITMQ_HOST)
+    )
+    channel = connection.channel()
+
     event = {
         "order_id": data["order_id"],
         "status": "RESERVED"
@@ -22,6 +28,8 @@ def publish_inventory_event(channel, data):
 
     print("📦 Sent inventory_reserved event:", event, flush=True)
 
+    connection.close()
+
 
 def callback(ch, method, properties, body):
     try:
@@ -29,10 +37,9 @@ def callback(ch, method, properties, body):
 
         print("📥 Inventory received order:", data, flush=True)
 
-        # 👉 simulate stock check
         time.sleep(1)
 
-        publish_inventory_event(ch, data)
+        publish_inventory_event(data)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -54,6 +61,7 @@ def start_consumer():
             channel = connection.channel()
 
             channel.queue_declare(queue="order_created", durable=True)
+            channel.queue_declare(queue="inventory_reserved", durable=True)
 
             channel.basic_consume(
                 queue="order_created",
@@ -66,9 +74,7 @@ def start_consumer():
 
         except Exception as e:
             import traceback
-
             print("❌ Retry ERROR:", repr(e), flush=True)
             traceback.print_exc()
-
             print("🔁 Retrying in 5 seconds...", flush=True)
             time.sleep(5)

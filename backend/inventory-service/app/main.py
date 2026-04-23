@@ -11,6 +11,7 @@ Base.metadata.create_all(bind=engine)
 
 app.include_router(inventory.router)
 
+
 @app.get("/")
 def root():
     return {"service": "Inventory Service Running"}
@@ -22,5 +23,4 @@ def start_inventory():
     thread.start()
 
 
-# Start consumer immediately
 start_inventory()

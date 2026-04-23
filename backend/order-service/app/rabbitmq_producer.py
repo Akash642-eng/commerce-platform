@@ -15,7 +15,8 @@ def publish_event(queue, message):
     channel.basic_publish(
         exchange='',
         routing_key=queue,
-        body=json.dumps(message)
+        body=json.dumps(message),
+        properties=pika.BasicProperties(delivery_mode=2)
     )
 
     connection.close()
