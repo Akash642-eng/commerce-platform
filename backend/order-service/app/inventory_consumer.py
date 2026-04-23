@@ -15,17 +15,17 @@ def callback(ch, method, properties, body):
     try:
         data = json.loads(body)
 
-        print("❌ Payment failed event received:", data, flush=True)
+        print("📦 Inventory event received:", data, flush=True)
 
         order = db.query(Order).filter(Order.id == data["order_id"]).first()
 
         if order:
-            if can_transition(order.status, "FAILED"):
-                order.status = "FAILED"
+            if can_transition(order.status, "RESERVED"):
+                order.status = "RESERVED"
                 db.commit()
-                print(f"🚫 Order {order.id} moved to FAILED", flush=True)
+                print(f"📦 Order {order.id} moved to RESERVED", flush=True)
             else:
-                print(f"⚠️ Invalid transition {order.status} → FAILED", flush=True)
+                print(f"⚠️ Invalid transition {order.status} → RESERVED", flush=True)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -36,8 +36,8 @@ def callback(ch, method, properties, body):
         db.close()
 
 
-def start_failed_consumer():
-    print("🚀 Payment FAILED consumer started", flush=True)
+def start_inventory_consumer():
+    print("🚀 Inventory consumer (order-service) started", flush=True)
 
     while True:
         try:
@@ -47,15 +47,15 @@ def start_failed_consumer():
 
             channel = connection.channel()
 
-            channel.queue_declare(queue="payment_failed", durable=True)
+            channel.queue_declare(queue="inventory_reserved", durable=True)
 
             channel.basic_consume(
-                queue="payment_failed",
+                queue="inventory_reserved",
                 on_message_callback=callback,
                 auto_ack=False
             )
 
-            print("📡 Waiting for payment_failed events...", flush=True)
+            print("📡 Waiting for inventory_reserved events...", flush=True)
             channel.start_consuming()
 
         except Exception as e:

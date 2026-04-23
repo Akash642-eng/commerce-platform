@@ -7,13 +7,8 @@ import random
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 
 
-def publish_payment_event(data):
+def publish_payment_event(ch, data):
     try:
-        connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=RABBITMQ_HOST)
-        )
-        channel = connection.channel()
-
         is_success = random.choice([True, False])
 
         if is_success:
@@ -22,9 +17,9 @@ def publish_payment_event(data):
                 "status": "SUCCESS"
             }
 
-            channel.queue_declare(queue="payment_completed", durable=True)
+            ch.queue_declare(queue="payment_completed", durable=True)
 
-            channel.basic_publish(
+            ch.basic_publish(
                 exchange='',
                 routing_key="payment_completed",
                 body=json.dumps(event),
@@ -39,9 +34,9 @@ def publish_payment_event(data):
                 "status": "FAILED"
             }
 
-            channel.queue_declare(queue="payment_failed", durable=True)
+            ch.queue_declare(queue="payment_failed", durable=True)
 
-            channel.basic_publish(
+            ch.basic_publish(
                 exchange='',
                 routing_key="payment_failed",
                 body=json.dumps(event),
@@ -49,8 +44,6 @@ def publish_payment_event(data):
             )
 
             print("❌ Sent payment_failed event:", event, flush=True)
-
-        connection.close()
 
     except Exception as e:
         print("❌ Failed to publish payment event:", str(e), flush=True)
@@ -64,7 +57,7 @@ def callback(ch, method, properties, body):
 
         time.sleep(1)
 
-        publish_payment_event(data)
+        publish_payment_event(ch, data)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -88,7 +81,6 @@ def start_consumer():
             )
 
             channel = connection.channel()
-
 
             channel.queue_declare(queue="inventory_reserved", durable=True)
             channel.queue_declare(queue="payment_completed", durable=True)

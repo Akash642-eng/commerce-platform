@@ -4,6 +4,7 @@ import os
 import time
 from .database import SessionLocal
 from .models import Order
+from .state_machine import can_transition
 
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 
@@ -18,10 +19,13 @@ def callback(ch, method, properties, body):
 
         order = db.query(Order).filter(Order.id == data["order_id"]).first()
 
-        if order and order.status != "PAID":
-            order.status = "PAID"
-            db.commit()
-            print(f"✅ Order {order.id} marked as PAID", flush=True)
+        if order:
+            if can_transition(order.status, "PAID"):
+                order.status = "PAID"
+                db.commit()
+                print(f"✅ Order {order.id} moved to PAID", flush=True)
+            else:
+                print(f"⚠️ Invalid transition {order.status} → PAID", flush=True)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 

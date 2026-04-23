@@ -8,6 +8,8 @@ from .payment_consumer import start_payment_consumer
 
 from .payment_failed_consumer import start_failed_consumer
 
+from .inventory_consumer import start_inventory_consumer
+
 app = FastAPI(title="Order Service")
 
 Base.metadata.create_all(bind=engine)
@@ -34,3 +36,14 @@ def start_failed():
     t.start()
 
 start_failed()
+
+
+
+import threading
+
+def start_inventory_thread():
+    thread = threading.Thread(target=start_inventory_consumer)
+    thread.daemon = True
+    thread.start()
+
+start_inventory_thread()
