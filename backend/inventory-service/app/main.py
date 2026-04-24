@@ -5,6 +5,8 @@ from .routes import inventory
 import threading
 from .rabbitmq_consumer import start_consumer
 
+from .release_consumer import start_release_consumer
+
 app = FastAPI(title="Inventory Service")
 
 Base.metadata.create_all(bind=engine)
@@ -22,5 +24,13 @@ def start_inventory():
     thread.daemon = True
     thread.start()
 
-
 start_inventory()
+
+import threading
+
+def start_release():
+    t = threading.Thread(target=start_release_consumer)
+    t.daemon = True
+    t.start()
+
+start_release()

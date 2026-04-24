@@ -9,6 +9,31 @@ from .state_machine import can_transition
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 
 
+def publish_inventory_release(data):
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(host=RABBITMQ_HOST)
+    )
+    channel = connection.channel()
+
+    event = {
+        "order_id": data["order_id"],
+        "status": "RELEASED"
+    }
+
+    channel.queue_declare(queue="inventory_release", durable=True)
+
+    channel.basic_publish(
+        exchange='',
+        routing_key="inventory_release",
+        body=json.dumps(event),
+        properties=pika.BasicProperties(delivery_mode=2)
+    )
+
+    print("🔄 Sent inventory_release event:", event, flush=True)
+
+    connection.close()
+
+
 def callback(ch, method, properties, body):
     db = SessionLocal()
 
@@ -24,6 +49,10 @@ def callback(ch, method, properties, body):
                 order.status = "FAILED"
                 db.commit()
                 print(f"🚫 Order {order.id} moved to FAILED", flush=True)
+
+                # 🔥 trigger rollback
+                publish_inventory_release(data)
+
             else:
                 print(f"⚠️ Invalid transition {order.status} → FAILED", flush=True)
 
