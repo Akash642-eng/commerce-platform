@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 import httpx
 
 app = FastAPI(title="API Gateway")
@@ -16,22 +16,38 @@ SERVICES = {
     "support": "http://support-service:8000",
 }
 
-@app.api_route("/{service}/{path:path}", methods=["GET","POST","PUT","DELETE"])
+
+@app.api_route("/{service}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def gateway(service: str, path: str, request: Request):
+
     if service not in SERVICES:
         return {"error": "Service not found"}
 
     url = f"{SERVICES[service]}/{path}"
 
-    async with httpx.AsyncClient() as client:
-        response = await client.request(
-            request.method,
-            url,
-            headers=request.headers.raw,
-            content=await request.body()
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.request(
+                method=request.method,
+                url=url,
+                headers=dict(request.headers),   # ✅ FIXED
+                params=request.query_params,     # ✅ ADD THIS
+                content=await request.body()
+            )
+
+        # ✅ Proper response back to client
+        return Response(
+            content=response.content,
+            status_code=response.status_code,
+            headers=dict(response.headers)
         )
 
-    return response.json()
+    except httpx.RequestError as e:
+        return {
+            "error": "Service unavailable",
+            "service": service,
+            "details": str(e)
+        }
 
 
 @app.get("/")
