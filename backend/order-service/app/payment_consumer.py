@@ -20,10 +20,25 @@ def callback(ch, method, properties, body):
         order = db.query(Order).filter(Order.id == data["order_id"]).first()
 
         if order:
+            # ✅ Normal valid transition
             if can_transition(order.status, "PAID"):
                 order.status = "PAID"
                 db.commit()
                 print(f"✅ Order {order.id} moved to PAID", flush=True)
+
+            # 🔥 FIX: handle out-of-order events (CREATED → PAID)
+            elif order.status == "CREATED":
+                print(f"⚠️ Missing RESERVED, auto-fixing for order {order.id}", flush=True)
+
+                order.status = "RESERVED"
+                db.commit()
+
+                order.status = "PAID"
+                db.commit()
+
+                print(f"✅ Order {order.id} force-moved CREATED → RESERVED → PAID", flush=True)
+
+            # ❌ Truly invalid case
             else:
                 print(f"⚠️ Invalid transition {order.status} → PAID", flush=True)
 
