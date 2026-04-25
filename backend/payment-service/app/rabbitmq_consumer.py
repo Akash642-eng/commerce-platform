@@ -48,24 +48,24 @@ def publish_payment_event(ch, data):
     except Exception as e:
         print("❌ Failed to publish payment event:", str(e), flush=True)
 
-
 def callback(ch, method, properties, body):
     try:
         data = json.loads(body)
+
+        print("📥 RECEIVED from inventory_reserved:", data, flush=True)
 
         print("💳 Processing payment for order:", data["order_id"], flush=True)
 
         time.sleep(1)
 
-        publish_payment_event(ch, data)
+        publish_payment_event(data)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
-        print("✅ Payment processed + ACK sent", flush=True)
+        print("✅ ACK sent for order:", data["order_id"], flush=True)
 
     except Exception as e:
         print("❌ Failed processing:", str(e), flush=True)
-
 
 def start_consumer():
     print("🚀 Payment consumer started", flush=True)
