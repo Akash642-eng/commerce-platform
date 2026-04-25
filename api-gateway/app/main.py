@@ -26,20 +26,32 @@ async def gateway(service: str, path: str, request: Request):
     url = f"{SERVICES[service]}/{path}"
 
     try:
+        headers = dict(request.headers)
+        headers.pop("host", None)
+
+        body = await request.body()
+
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.request(
                 method=request.method,
                 url=url,
-                headers=dict(request.headers),   # ✅ FIXED
-                params=request.query_params,     # ✅ ADD THIS
-                content=await request.body()
+                headers=headers,
+                params=request.query_params,
+                content=body if body else None
             )
 
-        # ✅ Proper response back to client
+        excluded_headers = ["content-encoding", "transfer-encoding", "connection"]
+
+        response_headers = {
+            key: value
+            for key, value in response.headers.items()
+            if key.lower() not in excluded_headers
+        }
+
         return Response(
             content=response.content,
             status_code=response.status_code,
-            headers=dict(response.headers)
+            headers=response_headers
         )
 
     except httpx.RequestError as e:
