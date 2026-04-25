@@ -16,7 +16,6 @@ SERVICES = {
     "support": "http://support-service:8000",
 }
 
-
 @app.api_route("/{service}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def gateway(service: str, path: str, request: Request):
 
@@ -26,9 +25,11 @@ async def gateway(service: str, path: str, request: Request):
     url = f"{SERVICES[service]}/{path}"
 
     try:
+        # 🔥 Fix headers
         headers = dict(request.headers)
         headers.pop("host", None)
 
+        # 🔥 Handle body safely
         body = await request.body()
 
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -40,6 +41,7 @@ async def gateway(service: str, path: str, request: Request):
                 content=body if body else None
             )
 
+        # 🔥 Clean response headers
         excluded_headers = ["content-encoding", "transfer-encoding", "connection"]
 
         response_headers = {
@@ -61,6 +63,30 @@ async def gateway(service: str, path: str, request: Request):
             "details": str(e)
         }
 
+@app.api_route("/orders", methods=["GET", "POST"])
+async def orders_root(request: Request):
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+
+            if request.method == "POST":
+                body = await request.json()
+                response = await client.post(
+                    "http://order-service:8000/orders/",
+                    json=body
+                )
+            else:
+                response = await client.get(
+                    "http://order-service:8000/orders/"
+                )
+
+        return Response(
+            content=response.content,
+            status_code=response.status_code,
+            headers=dict(response.headers)
+        )
+
+    except Exception as e:
+        return {"error": str(e)}
 
 @app.get("/")
 def root():
