@@ -2,13 +2,12 @@ from fastapi import FastAPI
 from .database import engine, Base
 from .routes import orders
 
-
 import threading
+
 from .payment_consumer import start_payment_consumer
-
 from .payment_failed_consumer import start_failed_consumer
-
 from .inventory_consumer import start_inventory_consumer
+
 
 app = FastAPI(title="Order Service")
 
@@ -16,34 +15,18 @@ Base.metadata.create_all(bind=engine)
 
 app.include_router(orders.router)
 
+
 @app.get("/")
 def root():
     return {"service": "Order Service Running"}
 
-def start_consumer():
-    thread = threading.Thread(target=start_payment_consumer)
-    thread.daemon = True
-    thread.start()
+def start_all_consumers():
+    print("🚀 Starting all order-service consumers...", flush=True)
 
-start_consumer()
+    threading.Thread(target=start_payment_consumer, daemon=True).start()
+    threading.Thread(target=start_failed_consumer, daemon=True).start()
+    threading.Thread(target=start_inventory_consumer, daemon=True).start()
 
-
-import threading
-
-def start_failed():
-    t = threading.Thread(target=start_failed_consumer)
-    t.daemon = True
-    t.start()
-
-start_failed()
-
-
-
-import threading
-
-def start_inventory_thread():
-    thread = threading.Thread(target=start_inventory_consumer)
-    thread.daemon = True
-    thread.start()
-
-start_inventory_thread()
+@app.on_event("startup")
+def startup_event():
+    start_all_consumers()
