@@ -7,8 +7,13 @@ import random
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 
 
-def publish_payment_event(ch, data):
+def publish_payment_event(data):
     try:
+        connection = pika.BlockingConnection(
+            pika.ConnectionParameters(host=RABBITMQ_HOST)
+        )
+        channel = connection.channel()
+
         is_success = random.choice([True, False])
 
         if is_success:
@@ -17,9 +22,9 @@ def publish_payment_event(ch, data):
                 "status": "SUCCESS"
             }
 
-            ch.queue_declare(queue="payment_completed", durable=True)
+            channel.queue_declare(queue="payment_completed", durable=True)
 
-            ch.basic_publish(
+            channel.basic_publish(
                 exchange='',
                 routing_key="payment_completed",
                 body=json.dumps(event),
@@ -34,9 +39,9 @@ def publish_payment_event(ch, data):
                 "status": "FAILED"
             }
 
-            ch.queue_declare(queue="payment_failed", durable=True)
+            channel.queue_declare(queue="payment_failed", durable=True)
 
-            ch.basic_publish(
+            channel.basic_publish(
                 exchange='',
                 routing_key="payment_failed",
                 body=json.dumps(event),
@@ -45,8 +50,11 @@ def publish_payment_event(ch, data):
 
             print("❌ Sent payment_failed event:", event, flush=True)
 
+        connection.close()
+
     except Exception as e:
         print("❌ Failed to publish payment event:", str(e), flush=True)
+
 
 def callback(ch, method, properties, body):
     try:
@@ -58,14 +66,16 @@ def callback(ch, method, properties, body):
 
         time.sleep(1)
 
+        # ✅ CORRECT CALL
         publish_payment_event(data)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
-        print("✅ ACK sent for order:", data["order_id"], flush=True)
+        print("✅ Payment processed + ACK sent", flush=True)
 
     except Exception as e:
         print("❌ Failed processing:", str(e), flush=True)
+
 
 def start_consumer():
     print("🚀 Payment consumer started", flush=True)
@@ -95,11 +105,10 @@ def start_consumer():
             )
 
             print("📡 Waiting for inventory_reserved...", flush=True)
+
             channel.start_consuming()
 
         except Exception as e:
-            import traceback
-            print("❌ ERROR:", repr(e), flush=True)
-            traceback.print_exc()
+            print("❌ ERROR:", str(e), flush=True)
             print("🔁 Retrying in 5 seconds...", flush=True)
             time.sleep(5)
