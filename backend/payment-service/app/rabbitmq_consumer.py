@@ -55,28 +55,6 @@ def publish_payment_event(data):
     except Exception as e:
         print("❌ Failed to publish payment event:", str(e), flush=True)
 
-def publish_failed_event(event):
-    try:
-        connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=RABBITMQ_HOST)
-        )
-        channel = connection.channel()
-
-        channel.queue_declare(queue="payment_failed", durable=True)
-
-        channel.basic_publish(
-            exchange='',
-            routing_key="payment_failed",
-            body=json.dumps(event),
-            properties=pika.BasicProperties(delivery_mode=2)
-        )
-
-        print("❌ Sent payment_failed event:", event, flush=True)
-
-        connection.close()
-
-    except Exception as e:
-        print("❌ Failed to publish FAILED event:", str(e), flush=True)
 
 def callback(ch, method, properties, body):
     try:
@@ -88,6 +66,7 @@ def callback(ch, method, properties, body):
 
         print("💳 Processing payment for order:", data["order_id"], flush=True)
 
+        # 🔥 simulate failure
         if data["order_id"] % 5 == 0:
             raise Exception("Simulated payment failure")
 
@@ -104,19 +83,23 @@ def callback(ch, method, properties, body):
 
         retry_count = data.get("retry", 0)
 
+        # 🚫 SEND TO DLQ AFTER 3 RETRIES
         if retry_count >= 3:
-            print("🚫 Max retries reached → sending FAILED event", flush=True)
+            print("🚫 Max retries reached → sending to DLQ", flush=True)
 
-            fail_event = {
-                "order_id": data["order_id"],
-                "status": "FAILED"
-            }
+            ch.basic_publish(
+                exchange='',
+                routing_key="payment_dlq",
+                body=json.dumps(data),
+                properties=pika.BasicProperties(delivery_mode=2)
+            )
 
-            publish_failed_event(fail_event)
+            print("💀 Sent to DLQ:", data, flush=True)
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
         else:
+            # 🔁 RETRY
             data["retry"] = retry_count + 1
 
             ch.basic_publish(
@@ -129,6 +112,7 @@ def callback(ch, method, properties, body):
             print(f"🔁 Retrying... ({data['retry']})", flush=True)
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
+
 
 def start_consumer():
     print("🚀 Payment consumer started", flush=True)
@@ -145,9 +129,11 @@ def start_consumer():
 
             channel = connection.channel()
 
+            # ✅ DECLARE ALL QUEUES
             channel.queue_declare(queue="inventory_reserved", durable=True)
             channel.queue_declare(queue="payment_completed", durable=True)
             channel.queue_declare(queue="payment_failed", durable=True)
+            channel.queue_declare(queue="payment_dlq", durable=True)
 
             channel.basic_qos(prefetch_count=1)
 
