@@ -55,27 +55,31 @@ def publish_payment_event(data):
     except Exception as e:
         print("❌ Failed to publish payment event:", str(e), flush=True)
 
-
 def callback(ch, method, properties, body):
     try:
         data = json.loads(body)
 
-        print("📥 RECEIVED from inventory_reserved:", data, flush=True)
+        print("📥 RECEIVED:", data, flush=True)
 
         print("💳 Processing payment for order:", data["order_id"], flush=True)
 
+        # 🔥 simulate failure (for testing retry)
+        if data["order_id"] % 5 == 0:
+            raise Exception("Simulated payment failure")
+
         time.sleep(1)
 
-        # ✅ CORRECT CALL
         publish_payment_event(data)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
-        print("✅ Payment processed + ACK sent", flush=True)
+        print("✅ ACK sent", flush=True)
 
     except Exception as e:
-        print("❌ Failed processing:", str(e), flush=True)
+        print("❌ Processing failed:", str(e), flush=True)
 
+        # ❗ DO NOT ACK → message will be retried
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
 def start_consumer():
     print("🚀 Payment consumer started", flush=True)
