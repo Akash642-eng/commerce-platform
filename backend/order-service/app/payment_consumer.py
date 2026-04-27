@@ -19,28 +19,38 @@ def callback(ch, method, properties, body):
 
         order = db.query(Order).filter(Order.id == data["order_id"]).first()
 
-        if order:
-            # ✅ Normal valid transition
-            if can_transition(order.status, "PAID"):
-                order.status = "PAID"
-                db.commit()
-                print(f"✅ Order {order.id} moved to PAID", flush=True)
+        if not order:
+            print("❌ Order not found", flush=True)
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            return
 
-            # 🔥 FIX: handle out-of-order events (CREATED → PAID)
-            elif order.status == "CREATED":
-                print(f"⚠️ Missing RESERVED, auto-fixing for order {order.id}", flush=True)
+        # ✅ IDEMPOTENCY (CRITICAL)
+        if order.status == "PAID":
+            print(f"⚠️ Duplicate event ignored for order {order.id}", flush=True)
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            return
 
-                order.status = "RESERVED"
-                db.commit()
+        # ✅ Normal valid transition
+        if can_transition(order.status, "PAID"):
+            order.status = "PAID"
+            db.commit()
+            print(f"✅ Order {order.id} moved to PAID", flush=True)
 
-                order.status = "PAID"
-                db.commit()
+        # 🔥 handle out-of-order events (CREATED → PAID)
+        elif order.status == "CREATED":
+            print(f"⚠️ Missing RESERVED, auto-fixing for order {order.id}", flush=True)
 
-                print(f"✅ Order {order.id} force-moved CREATED → RESERVED → PAID", flush=True)
+            order.status = "RESERVED"
+            db.commit()
 
-            # ❌ Truly invalid case
-            else:
-                print(f"⚠️ Invalid transition {order.status} → PAID", flush=True)
+            order.status = "PAID"
+            db.commit()
+
+            print(f"✅ Order {order.id} force-moved CREATED → RESERVED → PAID", flush=True)
+
+        # ❌ truly invalid case
+        else:
+            print(f"⚠️ Invalid transition {order.status} → PAID", flush=True)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
