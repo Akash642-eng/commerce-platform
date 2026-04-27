@@ -44,17 +44,27 @@ def callback(ch, method, properties, body):
 
         order = db.query(Order).filter(Order.id == data["order_id"]).first()
 
-        if order:
-            if can_transition(order.status, "FAILED"):
-                order.status = "FAILED"
-                db.commit()
-                print(f"🚫 Order {order.id} moved to FAILED", flush=True)
+        if not order:
+            print("❌ Order not found", flush=True)
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            return
 
-                # 🔥 trigger rollback
-                publish_inventory_release(data)
+        # ✅ IDEMPOTENCY (CRITICAL)
+        if order.status == "FAILED":
+            print(f"⚠️ Duplicate FAILED ignored for order {order.id}", flush=True)
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            return
 
-            else:
-                print(f"⚠️ Invalid transition {order.status} → FAILED", flush=True)
+        if can_transition(order.status, "FAILED"):
+            order.status = "FAILED"
+            db.commit()
+            print(f"🚫 Order {order.id} moved to FAILED", flush=True)
+
+            # 🔥 rollback only once
+            publish_inventory_release(data)
+
+        else:
+            print(f"⚠️ Invalid transition {order.status} → FAILED", flush=True)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
