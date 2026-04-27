@@ -55,15 +55,39 @@ def publish_payment_event(data):
     except Exception as e:
         print("❌ Failed to publish payment event:", str(e), flush=True)
 
+def publish_failed_event(event):
+    try:
+        connection = pika.BlockingConnection(
+            pika.ConnectionParameters(host=RABBITMQ_HOST)
+        )
+        channel = connection.channel()
+
+        channel.queue_declare(queue="payment_failed", durable=True)
+
+        channel.basic_publish(
+            exchange='',
+            routing_key="payment_failed",
+            body=json.dumps(event),
+            properties=pika.BasicProperties(delivery_mode=2)
+        )
+
+        print("❌ Sent payment_failed event:", event, flush=True)
+
+        connection.close()
+
+    except Exception as e:
+        print("❌ Failed to publish FAILED event:", str(e), flush=True)
+
 def callback(ch, method, properties, body):
     try:
         data = json.loads(body)
 
-        print("📥 RECEIVED:", data, flush=True)
+        retry_count = data.get("retry", 0)
+
+        print(f"📥 RECEIVED: {data} (retry={retry_count})", flush=True)
 
         print("💳 Processing payment for order:", data["order_id"], flush=True)
 
-        # 🔥 simulate failure (for testing retry)
         if data["order_id"] % 5 == 0:
             raise Exception("Simulated payment failure")
 
@@ -73,13 +97,38 @@ def callback(ch, method, properties, body):
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
-        print("✅ ACK sent", flush=True)
+        print("✅ Payment processed + ACK sent", flush=True)
 
     except Exception as e:
         print("❌ Processing failed:", str(e), flush=True)
 
-        # ❗ DO NOT ACK → message will be retried
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+        retry_count = data.get("retry", 0)
+
+        if retry_count >= 3:
+            print("🚫 Max retries reached → sending FAILED event", flush=True)
+
+            fail_event = {
+                "order_id": data["order_id"],
+                "status": "FAILED"
+            }
+
+            publish_failed_event(fail_event)
+
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+
+        else:
+            data["retry"] = retry_count + 1
+
+            ch.basic_publish(
+                exchange='',
+                routing_key="inventory_reserved",
+                body=json.dumps(data),
+                properties=pika.BasicProperties(delivery_mode=2)
+            )
+
+            print(f"🔁 Retrying... ({data['retry']})", flush=True)
+
+            ch.basic_ack(delivery_tag=method.delivery_tag)
 
 def start_consumer():
     print("🚀 Payment consumer started", flush=True)
