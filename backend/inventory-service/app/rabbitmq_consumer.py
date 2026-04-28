@@ -13,6 +13,7 @@ def publish_inventory_event(data):
     channel = connection.channel()
 
     event = {
+        "version": "v1",  # ✅ ADDED
         "order_id": data["order_id"],
         "status": "RESERVED"
     }
