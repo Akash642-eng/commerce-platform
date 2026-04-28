@@ -18,6 +18,7 @@ def publish_payment_event(data):
 
         if is_success:
             event = {
+                "version": "v1",  # ✅ ADDED
                 "order_id": data["order_id"],
                 "status": "SUCCESS"
             }
@@ -35,6 +36,7 @@ def publish_payment_event(data):
 
         else:
             event = {
+                "version": "v1",  # ✅ ADDED
                 "order_id": data["order_id"],
                 "status": "FAILED"
             }
@@ -66,7 +68,6 @@ def callback(ch, method, properties, body):
 
         print("💳 Processing payment for order:", data["order_id"], flush=True)
 
-        # 🔥 simulate failure
         if data["order_id"] % 5 == 0:
             raise Exception("Simulated payment failure")
 
@@ -83,9 +84,11 @@ def callback(ch, method, properties, body):
 
         retry_count = data.get("retry", 0)
 
-        # 🚫 SEND TO DLQ AFTER 3 RETRIES
         if retry_count >= 3:
             print("🚫 Max retries reached → sending to DLQ", flush=True)
+
+            # ✅ ADD VERSION IN DLQ ALSO
+            data["version"] = "v1"
 
             ch.basic_publish(
                 exchange='',
@@ -99,7 +102,6 @@ def callback(ch, method, properties, body):
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
         else:
-            # 🔁 RETRY
             data["retry"] = retry_count + 1
 
             ch.basic_publish(
@@ -129,7 +131,6 @@ def start_consumer():
 
             channel = connection.channel()
 
-            # ✅ DECLARE ALL QUEUES
             channel.queue_declare(queue="inventory_reserved", durable=True)
             channel.queue_declare(queue="payment_completed", durable=True)
             channel.queue_declare(queue="payment_failed", durable=True)
