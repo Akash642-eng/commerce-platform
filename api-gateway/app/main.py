@@ -1,52 +1,58 @@
-from fastapi import FastAPI, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Request, Response, HTTPException
 import httpx
-import time
-import uuid
 
 from .config import SERVICES
-from .middleware import RateLimitMiddleware
-from .validator import validate_request
 
 app = FastAPI(title="API Gateway")
 
-# ✅ Attach Rate Limiter
-app.add_middleware(RateLimitMiddleware)
+AUTH_SERVICE_URL = "http://auth-service:8000"
 
 
+# ---------------------------
+# 🔐 AUTH VALIDATION FUNCTION
+# ---------------------------
+async def verify_token(request: Request):
+    auth_header = request.headers.get("authorization")
+
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Missing token")
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(
+                f"{AUTH_SERVICE_URL}/auth/me",
+                headers={"Authorization": auth_header}
+            )
+
+        if response.status_code != 200:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        return response.json()
+
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Auth service error")
+
+
+# ---------------------------
+# 🌐 GENERIC ROUTER
+# ---------------------------
 @app.api_route("/{service}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def gateway(service: str, path: str, request: Request):
 
-    # ❌ Invalid service
     if service not in SERVICES:
-        return JSONResponse(
-            status_code=404,
-            content={"error": "Service not found"}
-        )
+        return {"error": "Service not found"}
 
-    # ✅ Validate request
-    is_valid, error = await validate_request(request)
-    if not is_valid:
-        return JSONResponse(
-            status_code=400,
-            content={"error": error}
-        )
+    # 🔐 PROTECT EVERYTHING EXCEPT AUTH
+    if service != "auth":
+        await verify_token(request)
 
     url = f"{SERVICES[service]}/{path}"
 
-    # ✅ Request tracing
-    request_id = str(uuid.uuid4())
-    start_time = time.time()
-
     try:
-        # 🔥 Fix headers
         headers = dict(request.headers)
         headers.pop("host", None)
 
-        # 🔥 Read body safely
         body = await request.body()
-
-        print(f"➡️ [{request_id}] {request.method} {service}/{path}", flush=True)
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.request(
@@ -57,14 +63,6 @@ async def gateway(service: str, path: str, request: Request):
                 content=body if body else None
             )
 
-        duration = round((time.time() - start_time) * 1000, 2)
-
-        print(
-            f"⬅️ [{request_id}] {response.status_code} {service} ({duration} ms)",
-            flush=True
-        )
-
-        # 🔥 Clean response headers
         excluded_headers = ["content-encoding", "transfer-encoding", "connection"]
 
         response_headers = {
@@ -80,54 +78,16 @@ async def gateway(service: str, path: str, request: Request):
         )
 
     except httpx.RequestError as e:
-        duration = round((time.time() - start_time) * 1000, 2)
-
-        print(
-            f"❌ [{request_id}] ERROR {service} ({duration} ms) → {str(e)}",
-            flush=True
-        )
-
-        return JSONResponse(
-            status_code=503,
-            content={
-                "error": "Service unavailable",
-                "service": service,
-                "request_id": request_id,
-                "details": str(e)
-            }
-        )
+        return {
+            "error": "Service unavailable",
+            "service": service,
+            "details": str(e)
+        }
 
 
-# ✅ Optional direct shortcut (cleaner version)
-@app.api_route("/orders", methods=["GET", "POST"])
-async def orders_root(request: Request):
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-
-            if request.method == "POST":
-                body = await request.json()
-                response = await client.post(
-                    "http://order-service:8000/orders/",
-                    json=body
-                )
-            else:
-                response = await client.get(
-                    "http://order-service:8000/orders/"
-                )
-
-        return Response(
-            content=response.content,
-            status_code=response.status_code,
-            headers=dict(response.headers)
-        )
-
-    except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"error": str(e)}
-        )
-
-
+# ---------------------------
+# ROOT
+# ---------------------------
 @app.get("/")
 def root():
     return {"message": "API Gateway Running"}
