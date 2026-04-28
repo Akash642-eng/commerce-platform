@@ -1,5 +1,6 @@
 import os
 
-JWT_SECRET = os.getenv("JWT_SECRET", "supersecretkey")
-JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+class Settings:
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "mysecretkey")
+
+settings = Settings()

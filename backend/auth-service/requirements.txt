@@ -1,9 +1,3 @@
 fastapi
 uvicorn
-sqlalchemy
-psycopg2-binary
-python-jose
-passlib[bcrypt]
-python-dotenv
-pydantic
-email-validator
+PyJWT

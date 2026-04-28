@@ -1,9 +1,18 @@
-from jose import jwt
+import jwt
 from datetime import datetime, timedelta
-from app.config import JWT_SECRET, JWT_ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from ..config import settings
 
-def create_access_token(data: dict):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+SECRET_KEY = settings.SECRET_KEY
+ALGORITHM = "HS256"
+
+
+def create_token(user_id: str):
+    payload = {
+        "user_id": user_id,
+        "exp": datetime.utcnow() + timedelta(hours=2)
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def decode_token(token: str):
+    return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])

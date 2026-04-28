@@ -1,9 +1,14 @@
-from passlib.context import CryptContext
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from .jwt import decode_token
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+security = HTTPBearer()
 
-def hash_password(password: str):
-    return pwd_context.hash(password)
 
-def verify_password(password: str, hashed_password: str):
-    return pwd_context.verify(password, hashed_password)
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        token = credentials.credentials
+        payload = decode_token(token)
+        return payload
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
