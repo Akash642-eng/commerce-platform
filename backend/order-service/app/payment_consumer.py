@@ -38,6 +38,31 @@ def callback(ch, method, properties, body):
     finally:
         db.close()
 
+def start_payment_consumer():
+    print("🚀 Payment consumer (order-service) started", flush=True)
+
+    while True:
+        try:
+            connection = pika.BlockingConnection(
+                pika.ConnectionParameters(host=RABBITMQ_HOST)
+            )
+
+            channel = connection.channel()
+
+            channel.queue_declare(queue="payment_completed", durable=True)
+
+            channel.basic_consume(
+                queue="payment_completed",
+                on_message_callback=callback,
+                auto_ack=False
+            )
+
+            print("📡 Waiting for payment events...", flush=True)
+            channel.start_consuming()
+
+        except Exception as e:
+            print("❌ Retry:", str(e), flush=True)
+            time.sleep(5)
 
 def start_inventory_consumer():
     print("🚀 Inventory consumer (order-service) started", flush=True)
