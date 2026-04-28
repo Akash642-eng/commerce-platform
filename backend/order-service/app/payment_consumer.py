@@ -15,42 +15,20 @@ def callback(ch, method, properties, body):
     try:
         data = json.loads(body)
 
-        print("💰 Payment event received:", data, flush=True)
+        version = data.get("version", "v1")  # ✅ ADDED
+        print(f"📦 Event version: {version}", flush=True)
+
+        print("📦 Inventory event received:", data, flush=True)
 
         order = db.query(Order).filter(Order.id == data["order_id"]).first()
 
-        if not order:
-            print("❌ Order not found", flush=True)
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-            return
-
-        # ✅ IDEMPOTENCY (CRITICAL)
-        if order.status == "PAID":
-            print(f"⚠️ Duplicate event ignored for order {order.id}", flush=True)
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-            return
-
-        # ✅ Normal valid transition
-        if can_transition(order.status, "PAID"):
-            order.status = "PAID"
-            db.commit()
-            print(f"✅ Order {order.id} moved to PAID", flush=True)
-
-        # 🔥 handle out-of-order events (CREATED → PAID)
-        elif order.status == "CREATED":
-            print(f"⚠️ Missing RESERVED, auto-fixing for order {order.id}", flush=True)
-
-            order.status = "RESERVED"
-            db.commit()
-
-            order.status = "PAID"
-            db.commit()
-
-            print(f"✅ Order {order.id} force-moved CREATED → RESERVED → PAID", flush=True)
-
-        # ❌ truly invalid case
-        else:
-            print(f"⚠️ Invalid transition {order.status} → PAID", flush=True)
+        if order:
+            if can_transition(order.status, "RESERVED"):
+                order.status = "RESERVED"
+                db.commit()
+                print(f"📦 Order {order.id} moved to RESERVED", flush=True)
+            else:
+                print(f"⚠️ Invalid transition {order.status} → RESERVED", flush=True)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -61,8 +39,8 @@ def callback(ch, method, properties, body):
         db.close()
 
 
-def start_payment_consumer():
-    print("🚀 Order service consumer started", flush=True)
+def start_inventory_consumer():
+    print("🚀 Inventory consumer (order-service) started", flush=True)
 
     while True:
         try:
@@ -72,17 +50,17 @@ def start_payment_consumer():
 
             channel = connection.channel()
 
-            channel.queue_declare(queue="payment_completed", durable=True)
+            channel.queue_declare(queue="inventory_reserved", durable=True)
 
             channel.basic_consume(
-                queue="payment_completed",
+                queue="inventory_reserved",
                 on_message_callback=callback,
                 auto_ack=False
             )
 
-            print("📡 Waiting for payment events...", flush=True)
+            print("📡 Waiting for inventory_reserved events...", flush=True)
             channel.start_consuming()
 
         except Exception as e:
-            print("❌ Retry:", repr(e), flush=True)
+            print("❌ Retry:", str(e), flush=True)
             time.sleep(5)
