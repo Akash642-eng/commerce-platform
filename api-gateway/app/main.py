@@ -8,9 +8,7 @@ app = FastAPI(title="API Gateway")
 AUTH_SERVICE_URL = "http://auth-service:8000"
 
 
-# ---------------------------
-# 🔐 AUTH VALIDATION FUNCTION
-# ---------------------------
+# 🔐 TOKEN VERIFICATION
 async def verify_token(request: Request):
     auth_header = request.headers.get("authorization")
 
@@ -29,24 +27,26 @@ async def verify_token(request: Request):
 
         return response.json()
 
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=401, detail="Auth service error")
 
 
-# ---------------------------
-# 🌐 GENERIC ROUTER
-# ---------------------------
+# 🌐 MAIN GATEWAY ROUTER
 @app.api_route("/{service}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def gateway(service: str, path: str, request: Request):
 
     if service not in SERVICES:
         return {"error": "Service not found"}
 
-    # 🔐 PROTECT EVERYTHING EXCEPT AUTH
+    # 🔐 Skip auth for auth-service
     if service != "auth":
         await verify_token(request)
 
-    url = f"{SERVICES[service]}/{path}"
+    # 🔥 FIX: handle empty path (IMPORTANT)
+    if path:
+        url = f"{SERVICES[service]}/{path}"
+    else:
+        url = f"{SERVICES[service]}/{service}/"
 
     try:
         headers = dict(request.headers)
@@ -63,6 +63,7 @@ async def gateway(service: str, path: str, request: Request):
                 content=body if body else None
             )
 
+        # 🔥 Clean response headers
         excluded_headers = ["content-encoding", "transfer-encoding", "connection"]
 
         response_headers = {
@@ -85,9 +86,7 @@ async def gateway(service: str, path: str, request: Request):
         }
 
 
-# ---------------------------
-# ROOT
-# ---------------------------
+# 🏠 ROOT
 @app.get("/")
 def root():
     return {"message": "API Gateway Running"}
