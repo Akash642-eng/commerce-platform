@@ -15,10 +15,9 @@ def callback(ch, method, properties, body):
     try:
         data = json.loads(body)
 
-        version = data.get("version", "v1")  # ✅ ADDED
-        print(f"📦 Event version: {version}", flush=True)
+        trace_id = properties.headers.get("x-trace-id") if properties.headers else "N/A"
 
-        print("📦 Inventory event received:", data, flush=True)
+        print(f"[TRACE {trace_id}] 📦 Event received: {data}", flush=True)
 
         order = db.query(Order).filter(Order.id == data["order_id"]).first()
 
@@ -26,9 +25,7 @@ def callback(ch, method, properties, body):
             if can_transition(order.status, "RESERVED"):
                 order.status = "RESERVED"
                 db.commit()
-                print(f"📦 Order {order.id} moved to RESERVED", flush=True)
-            else:
-                print(f"⚠️ Invalid transition {order.status} → RESERVED", flush=True)
+                print(f"[TRACE {trace_id}] Order {order.id} → RESERVED", flush=True)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -37,6 +34,7 @@ def callback(ch, method, properties, body):
 
     finally:
         db.close()
+
 
 def start_payment_consumer():
     print("🚀 Payment consumer (order-service) started", flush=True)
@@ -48,7 +46,6 @@ def start_payment_consumer():
             )
 
             channel = connection.channel()
-
             channel.queue_declare(queue="payment_completed", durable=True)
 
             channel.basic_consume(
@@ -64,6 +61,7 @@ def start_payment_consumer():
             print("❌ Retry:", str(e), flush=True)
             time.sleep(5)
 
+
 def start_inventory_consumer():
     print("🚀 Inventory consumer (order-service) started", flush=True)
 
@@ -74,7 +72,6 @@ def start_inventory_consumer():
             )
 
             channel = connection.channel()
-
             channel.queue_declare(queue="inventory_reserved", durable=True)
 
             channel.basic_consume(
