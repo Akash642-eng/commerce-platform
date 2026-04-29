@@ -8,6 +8,15 @@ app = FastAPI(title="API Gateway")
 AUTH_SERVICE_URL = "http://auth-service:8000"
 
 
+import time
+
+# 🔥 SIMPLE IN-MEMORY RATE LIMIT
+RATE_LIMIT = 5        # max requests
+WINDOW_SIZE = 10      # seconds
+
+request_log = {}
+
+
 # 🔐 TOKEN VERIFICATION
 async def verify_token(request: Request):
     auth_header = request.headers.get("authorization")
@@ -84,6 +93,23 @@ async def gateway(service: str, path: str, request: Request):
             "service": service,
             "details": str(e)
         }
+
+def check_rate_limit(client_id: str):
+    current_time = time.time()
+
+    if client_id not in request_log:
+        request_log[client_id] = []
+
+    # remove old requests
+    request_log[client_id] = [
+        t for t in request_log[client_id]
+        if current_time - t < WINDOW_SIZE
+    ]
+
+    if len(request_log[client_id]) >= RATE_LIMIT:
+        raise HTTPException(status_code=429, detail="Too many requests")
+
+    request_log[client_id].append(current_time)
 
 
 # 🏠 ROOT
