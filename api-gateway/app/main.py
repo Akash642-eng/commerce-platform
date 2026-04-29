@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request, Response, HTTPException
 import httpx
+import time
 
 from .config import SERVICES
 
@@ -7,8 +8,6 @@ app = FastAPI(title="API Gateway")
 
 AUTH_SERVICE_URL = "http://auth-service:8000"
 
-
-import time
 
 # 🔥 SIMPLE IN-MEMORY RATE LIMIT
 RATE_LIMIT = 5        # max requests
@@ -40,6 +39,25 @@ async def verify_token(request: Request):
         raise HTTPException(status_code=401, detail="Auth service error")
 
 
+# 🚦 RATE LIMIT FUNCTION
+def check_rate_limit(client_id: str):
+    current_time = time.time()
+
+    if client_id not in request_log:
+        request_log[client_id] = []
+
+    # remove old requests
+    request_log[client_id] = [
+        t for t in request_log[client_id]
+        if current_time - t < WINDOW_SIZE
+    ]
+
+    if len(request_log[client_id]) >= RATE_LIMIT:
+        raise HTTPException(status_code=429, detail="Too many requests")
+
+    request_log[client_id].append(current_time)
+
+
 # 🌐 MAIN GATEWAY ROUTER
 @app.api_route("/{service}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def gateway(service: str, path: str, request: Request):
@@ -47,11 +65,16 @@ async def gateway(service: str, path: str, request: Request):
     if service not in SERVICES:
         return {"error": "Service not found"}
 
-    # 🔐 Skip auth for auth-service
+    # 🔐 AUTH + RATE LIMIT
     if service != "auth":
-        await verify_token(request)
+        user = await verify_token(request)
 
-    # 🔥 FIX: handle empty path (IMPORTANT)
+        # 🔥 RATE LIMIT KEY = USER ID
+        client_id = user["user"]["user_id"]
+
+        check_rate_limit(client_id)
+
+    # 🔥 FIX: handle empty path
     if path:
         url = f"{SERVICES[service]}/{path}"
     else:
@@ -93,23 +116,6 @@ async def gateway(service: str, path: str, request: Request):
             "service": service,
             "details": str(e)
         }
-
-def check_rate_limit(client_id: str):
-    current_time = time.time()
-
-    if client_id not in request_log:
-        request_log[client_id] = []
-
-    # remove old requests
-    request_log[client_id] = [
-        t for t in request_log[client_id]
-        if current_time - t < WINDOW_SIZE
-    ]
-
-    if len(request_log[client_id]) >= RATE_LIMIT:
-        raise HTTPException(status_code=429, detail="Too many requests")
-
-    request_log[client_id].append(current_time)
 
 
 # 🏠 ROOT
