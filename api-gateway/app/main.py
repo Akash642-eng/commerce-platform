@@ -2,6 +2,8 @@ from fastapi import FastAPI, Request, Response, HTTPException
 import httpx
 import time
 import json
+import redis
+import os
 
 from .config import SERVICES
 
@@ -9,12 +11,15 @@ app = FastAPI(title="API Gateway")
 
 AUTH_SERVICE_URL = "http://auth-service:8000"
 
-# 🔥 RATE LIMIT CONFIG
-RATE_LIMIT = 5        # max requests
-WINDOW_SIZE = 10      # seconds
-request_log = {}
+# 🔥 REDIS CONNECTION
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+redis_client = redis.Redis(host=REDIS_HOST, port=6379, decode_responses=True)
 
-# 🔐 TOKEN VERIFICATION
+# 🔥 RATE LIMIT CONFIG
+RATE_LIMIT = 5
+WINDOW_SIZE = 10  # seconds
+
+# 🔐 TOKEN VERIFY
 async def verify_token(request: Request):
     auth_header = request.headers.get("authorization")
 
@@ -36,39 +41,49 @@ async def verify_token(request: Request):
     except Exception:
         raise HTTPException(status_code=401, detail="Auth service error")
 
-# 🚦 RATE LIMIT FUNCTION
+# 🚦 REDIS RATE LIMIT
 def check_rate_limit(client_id: str):
-    current_time = time.time()
+    key = f"rate_limit:{client_id}"
 
-    if client_id not in request_log:
-        request_log[client_id] = []
+    current = redis_client.get(key)
 
-    # remove old requests
-    request_log[client_id] = [
-        t for t in request_log[client_id]
-        if current_time - t < WINDOW_SIZE
-    ]
+    if current is None:
+        redis_client.set(key, 1, ex=WINDOW_SIZE)
+        return
 
-    if len(request_log[client_id]) >= RATE_LIMIT:
+    if int(current) >= RATE_LIMIT:
         raise HTTPException(status_code=429, detail="Too many requests")
 
-    request_log[client_id].append(current_time)
+    redis_client.incr(key)
 
-# ✅ REQUEST VALIDATION (Phase 16 final piece)
+# 🧠 CACHE (GET only)
+def get_cache_key(service: str, path: str, query: str):
+    return f"cache:{service}:{path}:{query}"
+
+def get_cached_response(key):
+    cached = redis_client.get(key)
+    if cached:
+        return json.loads(cached)
+    return None
+
+def set_cache_response(key, data):
+    redis_client.set(key, json.dumps(data), ex=15)  # 15 sec cache
+
+# ✅ VALIDATION
 def validate_order_request(body: dict):
     if not body:
-        raise HTTPException(status_code=400, detail="Empty request body")
+        raise HTTPException(status_code=400, detail="Empty body")
 
-    if "user_id" not in body or not body["user_id"]:
-        raise HTTPException(status_code=400, detail="user_id is required")
+    if "user_id" not in body:
+        raise HTTPException(status_code=400, detail="user_id required")
 
     if "items" not in body or not isinstance(body["items"], list):
-        raise HTTPException(status_code=400, detail="items must be a list")
+        raise HTTPException(status_code=400, detail="items must be list")
 
-    if "total_amount" not in body or not isinstance(body["total_amount"], (int, float)):
-        raise HTTPException(status_code=400, detail="total_amount must be a number")
+    if "total_amount" not in body:
+        raise HTTPException(status_code=400, detail="total_amount required")
 
-# 🌐 MAIN GATEWAY ROUTER
+# 🌐 MAIN ROUTER
 @app.api_route("/{service}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def gateway(service: str, path: str, request: Request):
 
@@ -78,11 +93,10 @@ async def gateway(service: str, path: str, request: Request):
     # 🔐 AUTH + RATE LIMIT
     if service != "auth":
         user = await verify_token(request)
-
         client_id = user["user"]["user_id"]
         check_rate_limit(client_id)
 
-    # 🔥 BUILD TARGET URL
+    # 🔥 BUILD URL
     if path:
         url = f"{SERVICES[service]}/{path}"
     else:
@@ -99,12 +113,22 @@ async def gateway(service: str, path: str, request: Request):
             try:
                 parsed_body = json.loads(raw_body)
             except:
-                raise HTTPException(status_code=400, detail="Invalid JSON body")
+                raise HTTPException(status_code=400, detail="Invalid JSON")
 
-        # ✅ APPLY VALIDATION (only for orders POST)
+        # ✅ VALIDATION
         if service == "orders" and request.method == "POST":
             validate_order_request(parsed_body)
 
+        # 🔥 CACHE CHECK (GET only)
+        cache_key = get_cache_key(service, path, str(request.query_params))
+
+        if request.method == "GET":
+            cached = get_cached_response(cache_key)
+            if cached:
+                print("⚡ CACHE HIT", flush=True)
+                return cached
+
+        # 🔁 FORWARD REQUEST
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.request(
                 method=request.method,
@@ -114,19 +138,16 @@ async def gateway(service: str, path: str, request: Request):
                 content=raw_body if raw_body else None
             )
 
-        # 🔥 CLEAN RESPONSE HEADERS
-        excluded_headers = ["content-encoding", "transfer-encoding", "connection"]
+        response_data = response.json()
 
-        response_headers = {
-            key: value
-            for key, value in response.headers.items()
-            if key.lower() not in excluded_headers
-        }
+        # 💾 STORE CACHE
+        if request.method == "GET":
+            set_cache_response(cache_key, response_data)
 
         return Response(
-            content=response.content,
+            content=json.dumps(response_data),
             status_code=response.status_code,
-            headers=response_headers
+            media_type="application/json"
         )
 
     except httpx.RequestError as e:

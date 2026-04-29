@@ -148,6 +148,7 @@ services:
       - delivery-service
       - notification-service
       - support-service
-
+    environment:
+      REDIS_HOST: redis
 volumes:
   postgres_data:
