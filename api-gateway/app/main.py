@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, Response, HTTPException
 import httpx
 import time
+import json
 
 from .config import SERVICES
 
@@ -8,13 +9,10 @@ app = FastAPI(title="API Gateway")
 
 AUTH_SERVICE_URL = "http://auth-service:8000"
 
-
-# 🔥 SIMPLE IN-MEMORY RATE LIMIT
+# 🔥 RATE LIMIT CONFIG
 RATE_LIMIT = 5        # max requests
 WINDOW_SIZE = 10      # seconds
-
 request_log = {}
-
 
 # 🔐 TOKEN VERIFICATION
 async def verify_token(request: Request):
@@ -38,7 +36,6 @@ async def verify_token(request: Request):
     except Exception:
         raise HTTPException(status_code=401, detail="Auth service error")
 
-
 # 🚦 RATE LIMIT FUNCTION
 def check_rate_limit(client_id: str):
     current_time = time.time()
@@ -57,24 +54,35 @@ def check_rate_limit(client_id: str):
 
     request_log[client_id].append(current_time)
 
+# ✅ REQUEST VALIDATION (Phase 16 final piece)
+def validate_order_request(body: dict):
+    if not body:
+        raise HTTPException(status_code=400, detail="Empty request body")
+
+    if "user_id" not in body or not body["user_id"]:
+        raise HTTPException(status_code=400, detail="user_id is required")
+
+    if "items" not in body or not isinstance(body["items"], list):
+        raise HTTPException(status_code=400, detail="items must be a list")
+
+    if "total_amount" not in body or not isinstance(body["total_amount"], (int, float)):
+        raise HTTPException(status_code=400, detail="total_amount must be a number")
 
 # 🌐 MAIN GATEWAY ROUTER
 @app.api_route("/{service}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def gateway(service: str, path: str, request: Request):
 
     if service not in SERVICES:
-        return {"error": "Service not found"}
+        raise HTTPException(status_code=404, detail="Service not found")
 
     # 🔐 AUTH + RATE LIMIT
     if service != "auth":
         user = await verify_token(request)
 
-        # 🔥 RATE LIMIT KEY = USER ID
         client_id = user["user"]["user_id"]
-
         check_rate_limit(client_id)
 
-    # 🔥 FIX: handle empty path
+    # 🔥 BUILD TARGET URL
     if path:
         url = f"{SERVICES[service]}/{path}"
     else:
@@ -84,7 +92,18 @@ async def gateway(service: str, path: str, request: Request):
         headers = dict(request.headers)
         headers.pop("host", None)
 
-        body = await request.body()
+        raw_body = await request.body()
+        parsed_body = None
+
+        if raw_body:
+            try:
+                parsed_body = json.loads(raw_body)
+            except:
+                raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+        # ✅ APPLY VALIDATION (only for orders POST)
+        if service == "orders" and request.method == "POST":
+            validate_order_request(parsed_body)
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.request(
@@ -92,10 +111,10 @@ async def gateway(service: str, path: str, request: Request):
                 url=url,
                 headers=headers,
                 params=request.query_params,
-                content=body if body else None
+                content=raw_body if raw_body else None
             )
 
-        # 🔥 Clean response headers
+        # 🔥 CLEAN RESPONSE HEADERS
         excluded_headers = ["content-encoding", "transfer-encoding", "connection"]
 
         response_headers = {
@@ -111,12 +130,10 @@ async def gateway(service: str, path: str, request: Request):
         )
 
     except httpx.RequestError as e:
-        return {
-            "error": "Service unavailable",
-            "service": service,
-            "details": str(e)
-        }
-
+        raise HTTPException(
+            status_code=503,
+            detail=f"{service} unavailable: {str(e)}"
+        )
 
 # 🏠 ROOT
 @app.get("/")
