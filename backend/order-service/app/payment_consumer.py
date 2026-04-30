@@ -9,35 +9,60 @@ from .state_machine import can_transition
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 
 
-def callback(ch, method, properties, body):
+def extract_trace(properties):
+    if properties and properties.headers:
+        return properties.headers.get("x-trace-id", "N/A")
+    return "N/A"
+
+
+# ✅ PAYMENT SUCCESS
+def payment_callback(ch, method, properties, body):
     db = SessionLocal()
 
     try:
         data = json.loads(body)
+        trace_id = extract_trace(properties)
 
-        trace_id = properties.headers.get("x-trace-id") if properties.headers else "N/A"
-
-        print(f"[TRACE {trace_id}] 📦 Event received: {data}", flush=True)
+        print(f"[TRACE {trace_id}] 💰 Payment event: {data}", flush=True)
 
         order = db.query(Order).filter(Order.id == data["order_id"]).first()
 
-        if order:
-            if can_transition(order.status, "RESERVED"):
-                order.status = "RESERVED"
-                db.commit()
-                print(f"[TRACE {trace_id}] Order {order.id} → RESERVED", flush=True)
+        if order and can_transition(order.status, "PAID"):
+            order.status = "PAID"
+            db.commit()
+            print(f"[TRACE {trace_id}] Order {order.id} → PAID", flush=True)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
-    except Exception as e:
-        print("❌ Error:", str(e), flush=True)
+    finally:
+        db.close()
+
+
+# ✅ INVENTORY RESERVED
+def inventory_callback(ch, method, properties, body):
+    db = SessionLocal()
+
+    try:
+        data = json.loads(body)
+        trace_id = extract_trace(properties)
+
+        print(f"[TRACE {trace_id}] 📦 Inventory event: {data}", flush=True)
+
+        order = db.query(Order).filter(Order.id == data["order_id"]).first()
+
+        if order and can_transition(order.status, "RESERVED"):
+            order.status = "RESERVED"
+            db.commit()
+            print(f"[TRACE {trace_id}] Order {order.id} → RESERVED", flush=True)
+
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
     finally:
         db.close()
 
 
 def start_payment_consumer():
-    print("🚀 Payment consumer (order-service) started", flush=True)
+    print("🚀 Payment consumer started", flush=True)
 
     while True:
         try:
@@ -50,7 +75,7 @@ def start_payment_consumer():
 
             channel.basic_consume(
                 queue="payment_completed",
-                on_message_callback=callback,
+                on_message_callback=payment_callback,
                 auto_ack=False
             )
 
@@ -63,7 +88,7 @@ def start_payment_consumer():
 
 
 def start_inventory_consumer():
-    print("🚀 Inventory consumer (order-service) started", flush=True)
+    print("🚀 Inventory consumer started", flush=True)
 
     while True:
         try:
@@ -76,7 +101,7 @@ def start_inventory_consumer():
 
             channel.basic_consume(
                 queue="inventory_reserved",
-                on_message_callback=callback,
+                on_message_callback=inventory_callback,
                 auto_ack=False
             )
 
