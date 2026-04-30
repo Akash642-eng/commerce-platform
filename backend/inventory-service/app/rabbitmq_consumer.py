@@ -3,6 +3,8 @@ import json
 import os
 import time
 
+from .logger import log_event  # ✅ NEW
+
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 
 
@@ -26,11 +28,11 @@ def publish_inventory_event(data, trace_id):
         body=json.dumps(event),
         properties=pika.BasicProperties(
             delivery_mode=2,
-            headers={"x-trace-id": trace_id}   # ✅ FIX
+            headers={"x-trace-id": trace_id}  # ✅ propagate trace
         )
     )
 
-    print(f"[TRACE {trace_id}] 📦 Sent inventory_reserved: {event}", flush=True)
+    log_event("inventory-service", trace_id, "Sent inventory_reserved", event)
 
     connection.close()
 
@@ -39,11 +41,9 @@ def callback(ch, method, properties, body):
     try:
         data = json.loads(body)
 
-        trace_id = "N/A"
-        if properties and properties.headers:
-            trace_id = properties.headers.get("x-trace-id", "N/A")
+        trace_id = properties.headers.get("x-trace-id") if properties.headers else "N/A"
 
-        print(f"[TRACE {trace_id}] 📥 Inventory received: {data}", flush=True)
+        log_event("inventory-service", trace_id, "Inventory received order", data)
 
         time.sleep(1)
 
@@ -51,14 +51,14 @@ def callback(ch, method, properties, body):
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
-        print(f"[TRACE {trace_id}] ✅ Inventory reserved", flush=True)
+        log_event("inventory-service", trace_id, "Inventory reserved", data)
 
     except Exception as e:
-        print("❌ Inventory error:", str(e), flush=True)
+        log_event("inventory-service", trace_id, "Inventory error", {"error": str(e)}, level="ERROR")
 
 
 def start_consumer():
-    print("🚀 Inventory consumer started", flush=True)
+    log_event("inventory-service", "SYSTEM", "Inventory consumer started")
 
     while True:
         try:
@@ -77,11 +77,11 @@ def start_consumer():
                 auto_ack=False
             )
 
-            print("📡 Waiting for order_created...", flush=True)
+            log_event("inventory-service", "SYSTEM", "Waiting for order_created")
+
             channel.start_consuming()
 
         except Exception as e:
-            import traceback
-            print("❌ Retry ERROR:", repr(e), flush=True)
-            traceback.print_exc()
+            log_event("inventory-service", "SYSTEM", "Retry error", {"error": str(e)}, level="ERROR")
+            log_event("inventory-service", "SYSTEM", "Retrying in 5 seconds", level="WARNING")
             time.sleep(5)
