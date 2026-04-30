@@ -2,10 +2,12 @@ services:
   postgres:
     image: postgres:15
     container_name: commerce-db
+    env_file:
+      - .env.dev
     environment:
-      POSTGRES_USER: commerce
-      POSTGRES_PASSWORD: commerce
-      POSTGRES_DB: commerce_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5434:5432"
     volumes:
@@ -24,7 +26,6 @@ services:
       - "5672:5672"
       - "15672:15672"
 
-
   auth-service:
     build: ./backend/auth-service
     container_name: auth-service
@@ -32,9 +33,11 @@ services:
       - "8000:8000"
     depends_on:
       - postgres
+    env_file:
+      - .env.dev
     environment:
-      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db
-      JWT_SECRET: supersecretkey
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
 
   product-service:
     build: ./backend/product-service
@@ -43,9 +46,10 @@ services:
       - "8001:8000"
     depends_on:
       - postgres
+    env_file:
+      - .env.dev
     environment:
-      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db
-
+      DATABASE_URL: ${DATABASE_URL}
 
   user-service:
     build: ./backend/user-service
@@ -54,8 +58,10 @@ services:
       - "8003:8000"
     depends_on:
       - postgres
+    env_file:
+      - .env.dev
     environment:
-      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db  
+      DATABASE_URL: ${DATABASE_URL}
 
   inventory-service:
     build: ./backend/inventory-service
@@ -64,8 +70,11 @@ services:
       - "8004:8000"
     depends_on:
       - postgres
+    env_file:
+      - .env.dev
     environment:
-      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db     
+      DATABASE_URL: ${DATABASE_URL}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
 
   cart-service:
     build: ./backend/cart-service
@@ -74,8 +83,10 @@ services:
       - "8005:8000"
     depends_on:
       - postgres
+    env_file:
+      - .env.dev
     environment:
-      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db 
+      DATABASE_URL: ${DATABASE_URL}
 
   order-service:
     build: ./backend/order-service
@@ -84,10 +95,12 @@ services:
       - "8006:8000"
     depends_on:
       - postgres
+    env_file:
+      - .env.dev
     environment:
-      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db
-      REDIS_HOST: redis
-      RABBITMQ_HOST: rabbitmq
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_HOST: ${REDIS_HOST}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
 
   payment-service:
     build: ./backend/payment-service
@@ -97,10 +110,12 @@ services:
     depends_on:
       - postgres
       - rabbitmq
+    env_file:
+      - .env.dev
     environment:
-      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db 
-      REDIS_HOST: redis
-      RABBITMQ_HOST: rabbitmq   
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_HOST: ${REDIS_HOST}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
 
   delivery-service:
     build: ./backend/delivery-service
@@ -109,8 +124,10 @@ services:
       - "8008:8000"
     depends_on:
       - postgres
+    env_file:
+      - .env.dev
     environment:
-      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db
+      DATABASE_URL: ${DATABASE_URL}
 
   notification-service:
     build: ./backend/notification-service
@@ -119,8 +136,10 @@ services:
       - "8009:8000"
     depends_on:
       - postgres
+    env_file:
+      - .env.dev
     environment:
-      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db
+      DATABASE_URL: ${DATABASE_URL}
 
   support-service:
     build: ./backend/support-service
@@ -129,8 +148,10 @@ services:
       - "8010:8000"
     depends_on:
       - postgres
+    env_file:
+      - .env.dev
     environment:
-      DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db
+      DATABASE_URL: ${DATABASE_URL}
 
   api-gateway:
     build: ./api-gateway
@@ -148,7 +169,10 @@ services:
       - delivery-service
       - notification-service
       - support-service
+    env_file:
+      - .env.dev
     environment:
-      REDIS_HOST: redis
+      REDIS_HOST: ${REDIS_HOST}
+
 volumes:
   postgres_data:
