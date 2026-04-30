@@ -5,6 +5,8 @@ import time
 import random
 import redis
 
+from .logger import log_event  # ✅ NEW
+
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 
 # 🔥 REDIS (Idempotency)
@@ -47,7 +49,7 @@ def publish_payment_event(data, trace_id):
         )
     )
 
-    print(f"[TRACE {trace_id}] 📤 Sent {queue}: {event}", flush=True)
+    log_event("payment-service", trace_id, f"Sent {queue}", event)
 
     connection.close()
 
@@ -63,14 +65,14 @@ def callback(ch, method, properties, body):
 
         # 🛑 DUPLICATE CHECK
         if redis_client.get(event_id):
-            print(f"[TRACE {trace_id}] ⚠️ Duplicate event skipped", flush=True)
+            log_event("payment-service", trace_id, "Duplicate event skipped", data)
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
         # mark event as processed
         redis_client.set(event_id, "1", ex=3600)
 
-        print(f"[TRACE {trace_id}] 💳 Processing payment: {data}", flush=True)
+        log_event("payment-service", trace_id, "Processing payment", data)
 
         # 🔥 simulate failure
         if data["order_id"] % 5 == 0:
@@ -82,16 +84,16 @@ def callback(ch, method, properties, body):
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
-        print(f"[TRACE {trace_id}] ✅ Payment processed + ACK sent", flush=True)
+        log_event("payment-service", trace_id, "Payment processed + ACK sent", data)
 
     except Exception as e:
-        print(f"[TRACE {trace_id}] ❌ Processing failed: {str(e)}", flush=True)
+        log_event("payment-service", trace_id, "Processing failed", {"error": str(e)}, level="ERROR")
 
         retry_count = data.get("retry", 0)
 
         # 🚫 MAX RETRIES → DLQ
         if retry_count >= 3:
-            print(f"[TRACE {trace_id}] 🚫 Max retries reached → sending to DLQ", flush=True)
+            log_event("payment-service", trace_id, "Max retries reached → sending to DLQ", data, level="ERROR")
 
             data["version"] = "v1"
 
@@ -105,7 +107,7 @@ def callback(ch, method, properties, body):
                 )
             )
 
-            print(f"[TRACE {trace_id}] 💀 Sent to DLQ", flush=True)
+            log_event("payment-service", trace_id, "Sent to DLQ", data, level="ERROR")
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -116,7 +118,13 @@ def callback(ch, method, properties, body):
 
             delay = 2 ** retry_count  # 2, 4, 8 seconds
 
-            print(f"[TRACE {trace_id}] 🔁 Retry {retry_count} after {delay}s", flush=True)
+            log_event(
+                "payment-service",
+                trace_id,
+                f"Retry {retry_count} after {delay}s",
+                data,
+                level="WARNING"
+            )
 
             time.sleep(delay)
 
@@ -134,7 +142,7 @@ def callback(ch, method, properties, body):
 
 
 def start_consumer():
-    print("🚀 Payment consumer started", flush=True)
+    log_event("payment-service", "SYSTEM", "Payment consumer started")
 
     while True:
         try:
@@ -162,11 +170,11 @@ def start_consumer():
                 auto_ack=False
             )
 
-            print("📡 Waiting for inventory_reserved...", flush=True)
+            log_event("payment-service", "SYSTEM", "Waiting for inventory_reserved")
 
             channel.start_consuming()
 
         except Exception as e:
-            print("❌ ERROR:", str(e), flush=True)
-            print("🔁 Retrying in 5 seconds...", flush=True)
+            log_event("payment-service", "SYSTEM", "Consumer error", {"error": str(e)}, level="ERROR")
+            log_event("payment-service", "SYSTEM", "Retrying in 5 seconds", level="WARNING")
             time.sleep(5)
