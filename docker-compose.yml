@@ -5,9 +5,9 @@ services:
     env_file:
       - .env.dev
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: commerce
+      POSTGRES_PASSWORD: commerce
+      POSTGRES_DB: commerce_db
     ports:
       - "5434:5432"
     volumes:
@@ -35,9 +35,6 @@ services:
       - postgres
     env_file:
       - .env.dev
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
-      JWT_SECRET: ${JWT_SECRET}
 
   product-service:
     build: ./backend/product-service
@@ -48,8 +45,6 @@ services:
       - postgres
     env_file:
       - .env.dev
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
 
   user-service:
     build: ./backend/user-service
@@ -60,8 +55,6 @@ services:
       - postgres
     env_file:
       - .env.dev
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
 
   inventory-service:
     build: ./backend/inventory-service
@@ -70,11 +63,9 @@ services:
       - "8004:8000"
     depends_on:
       - postgres
+      - rabbitmq
     env_file:
       - .env.dev
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
-      RABBITMQ_HOST: ${RABBITMQ_HOST}
 
   cart-service:
     build: ./backend/cart-service
@@ -85,8 +76,6 @@ services:
       - postgres
     env_file:
       - .env.dev
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
 
   order-service:
     build: ./backend/order-service
@@ -95,12 +84,10 @@ services:
       - "8006:8000"
     depends_on:
       - postgres
+      - rabbitmq
+      - redis
     env_file:
       - .env.dev
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_HOST: ${REDIS_HOST}
-      RABBITMQ_HOST: ${RABBITMQ_HOST}
 
   payment-service:
     build: ./backend/payment-service
@@ -110,12 +97,9 @@ services:
     depends_on:
       - postgres
       - rabbitmq
+      - redis
     env_file:
       - .env.dev
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_HOST: ${REDIS_HOST}
-      RABBITMQ_HOST: ${RABBITMQ_HOST}
 
   delivery-service:
     build: ./backend/delivery-service
@@ -126,8 +110,6 @@ services:
       - postgres
     env_file:
       - .env.dev
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
 
   notification-service:
     build: ./backend/notification-service
@@ -138,8 +120,6 @@ services:
       - postgres
     env_file:
       - .env.dev
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
 
   support-service:
     build: ./backend/support-service
@@ -150,8 +130,6 @@ services:
       - postgres
     env_file:
       - .env.dev
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
 
   api-gateway:
     build: ./api-gateway
@@ -169,10 +147,9 @@ services:
       - delivery-service
       - notification-service
       - support-service
+      - redis
     env_file:
       - .env.dev
-    environment:
-      REDIS_HOST: ${REDIS_HOST}
 
 volumes:
   postgres_data:
