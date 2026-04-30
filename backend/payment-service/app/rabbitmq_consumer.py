@@ -21,7 +21,6 @@ def publish_payment_event(data, trace_id):
             "order_id": data["order_id"],
             "status": "SUCCESS"
         }
-
         queue = "payment_completed"
     else:
         event = {
@@ -29,7 +28,6 @@ def publish_payment_event(data, trace_id):
             "order_id": data["order_id"],
             "status": "FAILED"
         }
-
         queue = "payment_failed"
 
     channel.queue_declare(queue=queue, durable=True)
@@ -44,7 +42,7 @@ def publish_payment_event(data, trace_id):
         )
     )
 
-    print(f"[TRACE {trace_id}] Sent {queue}: {event}", flush=True)
+    print(f"[TRACE {trace_id}] 📤 Sent {queue}: {event}", flush=True)
 
     connection.close()
 
@@ -53,9 +51,11 @@ def callback(ch, method, properties, body):
     try:
         data = json.loads(body)
 
-        trace_id = properties.headers.get("x-trace-id") if properties.headers else "N/A"
+        trace_id = "N/A"
+        if properties and properties.headers:
+            trace_id = properties.headers.get("x-trace-id", "N/A")
 
-        print(f"[TRACE {trace_id}] Processing payment: {data}", flush=True)
+        print(f"[TRACE {trace_id}] 💳 Processing payment: {data}", flush=True)
 
         if data["order_id"] % 5 == 0:
             raise Exception("Simulated payment failure")
