@@ -67,7 +67,7 @@ def callback(ch, method, properties, body):
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
-        # mark event as processed (TTL 1 hour)
+        # mark event as processed
         redis_client.set(event_id, "1", ex=3600)
 
         print(f"[TRACE {trace_id}] 💳 Processing payment: {data}", flush=True)
@@ -89,7 +89,7 @@ def callback(ch, method, properties, body):
 
         retry_count = data.get("retry", 0)
 
-        # 🚫 SEND TO DLQ AFTER 3 RETRIES
+        # 🚫 MAX RETRIES → DLQ
         if retry_count >= 3:
             print(f"[TRACE {trace_id}] 🚫 Max retries reached → sending to DLQ", flush=True)
 
@@ -110,8 +110,15 @@ def callback(ch, method, properties, body):
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
         else:
-            # 🔁 RETRY
-            data["retry"] = retry_count + 1
+            # 🔁 EXPONENTIAL BACKOFF
+            retry_count += 1
+            data["retry"] = retry_count
+
+            delay = 2 ** retry_count  # 2, 4, 8 seconds
+
+            print(f"[TRACE {trace_id}] 🔁 Retry {retry_count} after {delay}s", flush=True)
+
+            time.sleep(delay)
 
             ch.basic_publish(
                 exchange='',
@@ -122,8 +129,6 @@ def callback(ch, method, properties, body):
                     headers={"x-trace-id": trace_id}
                 )
             )
-
-            print(f"[TRACE {trace_id}] 🔁 Retrying... ({data['retry']})", flush=True)
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -143,7 +148,7 @@ def start_consumer():
 
             channel = connection.channel()
 
-            # ✅ DECLARE ALL QUEUES
+            # ✅ DECLARE QUEUES
             channel.queue_declare(queue="inventory_reserved", durable=True)
             channel.queue_declare(queue="payment_completed", durable=True)
             channel.queue_declare(queue="payment_failed", durable=True)
