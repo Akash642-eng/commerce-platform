@@ -136,6 +136,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env*
 .envrc
 .venv
 env/
@@ -211,7 +212,7 @@ __marimo__/
 docker-data/
 postgres_data/
 *.log
-
+s
 # Environment variables
 .env
 .env.*
