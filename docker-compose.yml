@@ -34,7 +34,7 @@ services:
     depends_on:
       - postgres
     env_file:
-      - .env.dev
+      - ${ENV_FILE}
 
   product-service:
     build: ./backend/product-service
@@ -44,7 +44,7 @@ services:
     depends_on:
       - postgres
     env_file:
-      - .env.dev
+      - ${ENV_FILE}
 
   user-service:
     build: ./backend/user-service
@@ -54,7 +54,7 @@ services:
     depends_on:
       - postgres
     env_file:
-      - .env.dev
+      - ${ENV_FILE}
 
   inventory-service:
     build: ./backend/inventory-service
@@ -65,7 +65,7 @@ services:
       - postgres
       - rabbitmq
     env_file:
-      - .env.dev
+      - ${ENV_FILE}
 
   cart-service:
     build: ./backend/cart-service
@@ -75,7 +75,7 @@ services:
     depends_on:
       - postgres
     env_file:
-      - .env.dev
+      - ${ENV_FILE}
 
   order-service:
     build: ./backend/order-service
@@ -87,7 +87,7 @@ services:
       - rabbitmq
       - redis
     env_file:
-      - .env.dev
+      - ${ENV_FILE}
 
   payment-service:
     build: ./backend/payment-service
@@ -99,7 +99,7 @@ services:
       - rabbitmq
       - redis
     env_file:
-      - .env.dev
+      - ${ENV_FILE}
 
   delivery-service:
     build: ./backend/delivery-service
@@ -109,7 +109,7 @@ services:
     depends_on:
       - postgres
     env_file:
-      - .env.dev
+      - ${ENV_FILE}
 
   notification-service:
     build: ./backend/notification-service
@@ -119,7 +119,7 @@ services:
     depends_on:
       - postgres
     env_file:
-      - .env.dev
+      - ${ENV_FILE}
 
   support-service:
     build: ./backend/support-service
@@ -129,7 +129,7 @@ services:
     depends_on:
       - postgres
     env_file:
-      - .env.dev
+      - ${ENV_FILE}
 
   api-gateway:
     build: ./api-gateway
@@ -149,7 +149,7 @@ services:
       - support-service
       - redis
     env_file:
-      - .env.dev
+      - ${ENV_FILE}
 
 volumes:
   postgres_data:
