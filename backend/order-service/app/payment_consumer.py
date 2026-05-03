@@ -1,19 +1,20 @@
 import pika
 import json
-import os
 import time
 import redis
+import os
 
 from .database import SessionLocal
 from .models import Order
 from .state_machine import can_transition
 from .logger import log_event
-from .config import settings  # ✅ NEW
+from .config import settings
 
-RABBITMQ_HOST = settings.RABBITMQ_HOST  # ✅ UPDATED
+ENV = os.getenv("ENV", "dev")
 
-# 🔥 REDIS (Idempotency)
-redis_client = redis.Redis(  # ✅ UPDATED
+RABBITMQ_HOST = settings.RABBITMQ_HOST
+
+redis_client = redis.Redis(
     host=settings.REDIS_HOST,
     port=6379,
     decode_responses=True
@@ -39,26 +40,15 @@ def callback(ch, method, properties, body):
 
         status = data.get("status")
 
-        # 🔥 IDEMPOTENCY KEY
         event_id = f"order:{order.id}:{status}"
 
         if redis_client.get(event_id):
-            log_event(
-                "order-service",
-                trace_id,
-                "Duplicate event skipped",
-                {"event_id": event_id},
-                level="WARNING"
-            )
+            log_event("order-service", trace_id, "Duplicate event skipped", {"event_id": event_id}, level="WARNING")
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
-        # mark processed
         redis_client.set(event_id, "1", ex=3600)
 
-        # ============================
-        # 🎯 HANDLE INVENTORY RESERVED
-        # ============================
         if status == "RESERVED":
             old_status = order.status
 
@@ -66,32 +56,12 @@ def callback(ch, method, properties, body):
                 order.status = "RESERVED"
                 db.commit()
 
-                log_event(
-                    "order-service",
-                    trace_id,
-                    "Order state transition",
-                    {
-                        "order_id": order.id,
-                        "from": old_status,
-                        "to": "RESERVED"
-                    }
-                )
-            else:
-                log_event(
-                    "order-service",
-                    trace_id,
-                    "Invalid transition",
-                    {
-                        "order_id": order.id,
-                        "from": order.status,
-                        "to": "RESERVED"
-                    },
-                    level="WARNING"
-                )
+                log_event("order-service", trace_id, "State transition", {
+                    "order_id": order.id,
+                    "from": old_status,
+                    "to": "RESERVED"
+                })
 
-        # ============================
-        # 💰 HANDLE PAYMENT SUCCESS
-        # ============================
         elif status == "SUCCESS":
             old_status = order.status
 
@@ -99,25 +69,14 @@ def callback(ch, method, properties, body):
                 order.status = "PAID"
                 db.commit()
 
-                log_event(
-                    "order-service",
-                    trace_id,
-                    "Order state transition",
-                    {
-                        "order_id": order.id,
-                        "from": old_status,
-                        "to": "PAID"
-                    }
-                )
+                log_event("order-service", trace_id, "State transition", {
+                    "order_id": order.id,
+                    "from": old_status,
+                    "to": "PAID"
+                })
 
             elif order.status == "CREATED":
-                log_event(
-                    "order-service",
-                    trace_id,
-                    "Fixing out-of-order event",
-                    {"order_id": order.id},
-                    level="WARNING"
-                )
+                log_event("order-service", trace_id, "Fixing out-of-order", {"order_id": order.id}, level="WARNING")
 
                 order.status = "RESERVED"
                 db.commit()
@@ -125,50 +84,25 @@ def callback(ch, method, properties, body):
                 order.status = "PAID"
                 db.commit()
 
-                log_event(
-                    "order-service",
-                    trace_id,
-                    "Order force transitioned",
-                    {
-                        "order_id": order.id,
-                        "from": "CREATED",
-                        "to": "PAID"
-                    }
-                )
-
-            else:
-                log_event(
-                    "order-service",
-                    trace_id,
-                    "Invalid transition",
-                    {
-                        "order_id": order.id,
-                        "from": order.status,
-                        "to": "PAID"
-                    },
-                    level="WARNING"
-                )
+                log_event("order-service", trace_id, "Forced transition", {
+                    "order_id": order.id,
+                    "to": "PAID"
+                })
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except Exception as e:
-        log_event(
-            "order-service",
-            trace_id if 'trace_id' in locals() else "N/A",
-            "Processing error",
-            {"error": str(e)},
-            level="ERROR"
-        )
+        err = str(e) if ENV == "dev" else "processing error"
+
+        log_event("order-service", trace_id if 'trace_id' in locals() else "N/A",
+                  "Processing error", {"error": err}, level="ERROR")
 
     finally:
         db.close()
 
 
-# ============================
-# 💰 PAYMENT CONSUMER
-# ============================
 def start_payment_consumer():
-    log_event("order-service", "SYSTEM", "Payment consumer started")
+    log_event("order-service", "SYSTEM", f"Payment consumer started ({ENV})")
 
     while True:
         try:
@@ -190,21 +124,12 @@ def start_payment_consumer():
             channel.start_consuming()
 
         except Exception as e:
-            log_event(
-                "order-service",
-                "SYSTEM",
-                "Consumer retry",
-                {"error": str(e)},
-                level="ERROR"
-            )
+            log_event("order-service", "SYSTEM", "Retrying consumer", {"error": str(e)}, level="ERROR")
             time.sleep(5)
 
 
-# ============================
-# 📦 INVENTORY CONSUMER
-# ============================
 def start_inventory_consumer():
-    log_event("order-service", "SYSTEM", "Inventory consumer started")
+    log_event("order-service", "SYSTEM", f"Inventory consumer started ({ENV})")
 
     while True:
         try:
@@ -226,11 +151,5 @@ def start_inventory_consumer():
             channel.start_consuming()
 
         except Exception as e:
-            log_event(
-                "order-service",
-                "SYSTEM",
-                "Consumer retry",
-                {"error": str(e)},
-                level="ERROR"
-            )
+            log_event("order-service", "SYSTEM", "Retrying consumer", {"error": str(e)}, level="ERROR")
             time.sleep(5)

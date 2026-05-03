@@ -12,6 +12,9 @@ app = FastAPI(title="API Gateway")
 
 AUTH_SERVICE_URL = "http://auth-service:8000"
 
+# 🔥 ENV
+ENV = os.getenv("ENV", "dev")
+
 # 🔥 REDIS CONNECTION
 REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 redis_client = redis.Redis(host=REDIS_HOST, port=6379, decode_responses=True)
@@ -40,7 +43,9 @@ async def verify_token(request: Request):
         return response.json()
 
     except Exception:
-        raise HTTPException(status_code=401, detail="Auth service error")
+        if ENV == "dev":
+            raise HTTPException(status_code=401, detail="Auth service error (dev)")
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 # 🚦 RATE LIMIT
@@ -98,7 +103,8 @@ async def gateway(service: str, path: str, request: Request):
     trace_id = request.headers.get("x-trace-id", str(uuid.uuid4()))
     start_time = time.time()
 
-    print(f"[TRACE {trace_id}] Incoming {request.method} {service}/{path}", flush=True)
+    if ENV == "dev":
+        print(f"[TRACE {trace_id}] Incoming {request.method} {service}/{path}", flush=True)
 
     if service != "auth":
         user = await verify_token(request)
@@ -129,10 +135,13 @@ async def gateway(service: str, path: str, request: Request):
         if request.method == "GET":
             cached = get_cached_response(cache_key)
             if cached:
-                print(f"[TRACE {trace_id}] ⚡ CACHE HIT", flush=True)
+                if ENV == "dev":
+                    print(f"[TRACE {trace_id}] ⚡ CACHE HIT", flush=True)
                 return cached
 
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        timeout = 10.0 if ENV == "dev" else 5.0
+
+        async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.request(
                 method=request.method,
                 url=url,
@@ -147,7 +156,9 @@ async def gateway(service: str, path: str, request: Request):
             set_cache_response(cache_key, response_data)
 
         duration = round(time.time() - start_time, 3)
-        print(f"[TRACE {trace_id}] Completed in {duration}s", flush=True)
+
+        if ENV != "prod":
+            print(f"[TRACE {trace_id}] Completed in {duration}s", flush=True)
 
         return Response(
             content=json.dumps(response_data),
@@ -157,9 +168,11 @@ async def gateway(service: str, path: str, request: Request):
         )
 
     except httpx.RequestError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        if ENV == "dev":
+            raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="Service unavailable")
 
 
 @app.get("/")
 def root():
-    return {"message": "API Gateway Running"}
+    return {"message": f"API Gateway Running ({ENV})"}
