@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: api-gateway:latest
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 8000
+
+          env:
+            - name: ORDER_SERVICE
+              value: http://order-service:8000
+
+            - name: USER_SERVICE
+              value: http://user-service:8000
+
+            - name: PRODUCT_SERVICE
+              value: http://product-service:8000
+
+            - name: INVENTORY_SERVICE
+              value: http://inventory-service:8000
+
+            - name: PAYMENT_SERVICE
+              value: http://payment-service:8000
+
+            - name: CART_SERVICE
+              value: http://cart-service:8000
+
+            - name: AUTH_SERVICE
+              value: http://auth-service:8000
+
+            - name: DELIVERY_SERVICE
+              value: http://delivery-service:8000
+
+            - name: NOTIFICATION_SERVICE
+              value: http://notification-service:8000
+
+            - name: SUPPORT_SERVICE
+              value: http://support-service:8000
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "300m"
+              memory: "256Mi"
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+spec:
+  type: NodePort
+  selector:
+    app: api-gateway
+  ports:
+    - port: 8000
+      targetPort: 8000
