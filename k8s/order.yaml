@@ -14,20 +14,17 @@ spec:
     spec:
       containers:
         - name: order-service
-          image: order-service
+          image: order-service:latest
           imagePullPolicy: IfNotPresent
+
           ports:
             - containerPort: 8000
 
-          env:
-            - name: DATABASE_URL
-              value: postgresql://commerce:commerce@postgres:5432/commerce_db
-
-            - name: REDIS_HOST
-              value: redis
-
-            - name: RABBITMQ_HOST
-              value: rabbitmq
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secret
 
           resources:
             requests:
@@ -36,6 +33,21 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "250m"
+
+          # HC
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
 
 ---
 apiVersion: v1

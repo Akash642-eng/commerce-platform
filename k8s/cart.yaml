@@ -16,16 +16,14 @@ spec:
         - name: cart-service
           image: cart-service:latest
           imagePullPolicy: IfNotPresent
-
           ports:
             - containerPort: 8000
 
-          env:
-            - name: DATABASE_URL
-              value: postgresql://commerce:commerce@postgres:5432/commerce_db
-
-            - name: REDIS_HOST
-              value: redis
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secret
 
           resources:
             requests:

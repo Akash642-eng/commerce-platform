@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+
+data:
+  # infra
+  DATABASE_URL: postgresql://commerce:commerce@postgres:5432/commerce_db
+  REDIS_HOST: redis
+  RABBITMQ_HOST: rabbitmq
+
+  ORDER_SERVICE: http://order-service:8000
+  USER_SERVICE: http://user-service:8000
+  PRODUCT_SERVICE: http://product-service:8000
+  INVENTORY_SERVICE: http://inventory-service:8000
+  PAYMENT_SERVICE: http://payment-service:8000
+  CART_SERVICE: http://cart-service:8000
+  AUTH_SERVICE: http://auth-service:8000
+  DELIVERY_SERVICE: http://delivery-service:8000
+  NOTIFICATION_SERVICE: http://notification-service:8000
+  SUPPORT_SERVICE: http://support-service:8000

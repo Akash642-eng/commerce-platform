@@ -1,26 +1,30 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: notification-service
+  name: support-service
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: notification-service
+      app: support-service
   template:
     metadata:
       labels:
-        app: notification-service
+        app: support-service
     spec:
       containers:
-        - name: notification-service
-          image: notification-service:latest
+        - name: support-service
+          image: support-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
-          env:
-            - name: DATABASE_URL
-              value: postgresql://commerce:commerce@postgres:5432/commerce_db
+
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secret
+
           resources:
             requests:
               cpu: "100m"
@@ -28,12 +32,14 @@ spec:
             limits:
               cpu: "250m"
               memory: "256Mi"
+
           livenessProbe:
             httpGet:
               path: /
               port: 8000
             initialDelaySeconds: 10
             periodSeconds: 10
+
           readinessProbe:
             httpGet:
               path: /
@@ -45,11 +51,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: notification-service
+  name: support-service
 spec:
   type: NodePort
   selector:
-    app: notification-service
+    app: support-service
   ports:
     - port: 8000
       targetPort: 8000
