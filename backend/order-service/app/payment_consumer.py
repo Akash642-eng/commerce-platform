@@ -20,16 +20,34 @@ redis_client = redis.Redis(
     decode_responses=True
 )
 
+MAX_RETRIES = 3
+
+
+def publish_to_queue(channel, queue_name, message, headers=None):
+    channel.basic_publish(
+        exchange='',
+        routing_key=queue_name,
+        body=json.dumps(message),
+        properties=pika.BasicProperties(
+            delivery_mode=2,
+            headers=headers or {}
+        )
+    )
+
 
 def callback(ch, method, properties, body):
     db = SessionLocal()
 
+    trace_id = "N/A"
+
     try:
         data = json.loads(body)
 
-        trace_id = properties.headers.get("x-trace-id") if properties and properties.headers else "N/A"
+        headers = properties.headers or {}
+        retry_count = headers.get("x-retry", 0)
+        trace_id = headers.get("x-trace-id", "N/A")
 
-        log_event("order-service", trace_id, "Event received", data)
+        log_event("order-service", trace_id, f"Event received (retry={retry_count})", data)
 
         order = db.query(Order).filter(Order.id == data["order_id"]).first()
 
@@ -39,7 +57,6 @@ def callback(ch, method, properties, body):
             return
 
         status = data.get("status")
-
         event_id = f"order:{order.id}:{status}"
 
         if redis_client.get(event_id):
@@ -61,6 +78,8 @@ def callback(ch, method, properties, body):
                     "from": old_status,
                     "to": "RESERVED"
                 })
+            else:
+                raise Exception(f"Invalid transition {order.status} → RESERVED")
 
         elif status == "SUCCESS":
             old_status = order.status
@@ -94,8 +113,53 @@ def callback(ch, method, properties, body):
     except Exception as e:
         err = str(e) if ENV == "dev" else "processing error"
 
-        log_event("order-service", trace_id if 'trace_id' in locals() else "N/A",
-                  "Processing error", {"error": err}, level="ERROR")
+        log_event(
+            "order-service",
+            trace_id,
+            "Processing error",
+            {"error": err},
+            level="ERROR"
+        )
+
+        headers = properties.headers or {}
+        retry_count = headers.get("x-retry", 0)
+
+        if retry_count < MAX_RETRIES:
+            new_headers = headers.copy()
+            new_headers["x-retry"] = retry_count + 1
+
+            log_event(
+                "order-service",
+                trace_id,
+                f"Retrying message ({retry_count + 1})",
+                {},
+                level="WARNING"
+            )
+
+            publish_to_queue(
+                ch,
+                "payment_completed",
+                json.loads(body),
+                headers=new_headers
+            )
+
+        else:
+            log_event(
+                "order-service",
+                trace_id,
+                "Sending to DLQ",
+                {},
+                level="ERROR"
+            )
+
+            publish_to_queue(
+                ch,
+                "payment_completed_dlq",
+                json.loads(body),
+                headers=headers
+            )
+
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
     finally:
         db.close()
@@ -111,7 +175,9 @@ def start_payment_consumer():
             )
 
             channel = connection.channel()
+
             channel.queue_declare(queue="payment_completed", durable=True)
+            channel.queue_declare(queue="payment_completed_dlq", durable=True)
 
             channel.basic_consume(
                 queue="payment_completed",
@@ -138,7 +204,9 @@ def start_inventory_consumer():
             )
 
             channel = connection.channel()
+
             channel.queue_declare(queue="inventory_reserved", durable=True)
+            channel.queue_declare(queue="inventory_reserved_dlq", durable=True)
 
             channel.basic_consume(
                 queue="inventory_reserved",

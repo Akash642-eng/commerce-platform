@@ -8,19 +8,41 @@ import redis
 from .logger import log_event
 
 ENV = os.getenv("ENV", "dev")
-
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 
 REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 redis_client = redis.Redis(host=REDIS_HOST, port=6379, decode_responses=True)
 
+MAX_RETRIES = 3
 
-def publish_payment_event(data, trace_id):
+
+# ---------- COMMON PUBLISH ----------
+def publish(queue, message, trace_id, headers=None):
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(host=RABBITMQ_HOST)
     )
     channel = connection.channel()
 
+    channel.queue_declare(queue=queue, durable=True)
+
+    final_headers = headers or {}
+    final_headers["x-trace-id"] = trace_id
+
+    channel.basic_publish(
+        exchange='',
+        routing_key=queue,
+        body=json.dumps(message),
+        properties=pika.BasicProperties(
+            delivery_mode=2,
+            headers=final_headers
+        )
+    )
+
+    connection.close()
+
+
+# ---------- PAYMENT EVENT ----------
+def publish_payment_event(data, trace_id):
     is_success = random.choice([True, False])
 
     if is_success:
@@ -38,40 +60,39 @@ def publish_payment_event(data, trace_id):
         }
         queue = "payment_failed"
 
-    channel.queue_declare(queue=queue, durable=True)
-
-    channel.basic_publish(
-        exchange='',
-        routing_key=queue,
-        body=json.dumps(event),
-        properties=pika.BasicProperties(
-            delivery_mode=2,
-            headers={"x-trace-id": trace_id}
-        )
-    )
+    publish(queue, event, trace_id)
 
     log_event("payment-service", trace_id, f"Sent {queue}", event)
 
-    connection.close()
 
-
+# ---------- CALLBACK ----------
 def callback(ch, method, properties, body):
+    trace_id = "N/A"
+
     try:
         data = json.loads(body)
 
-        trace_id = properties.headers.get("x-trace-id") if properties.headers else "N/A"
+        headers = properties.headers or {}
+        trace_id = headers.get("x-trace-id", "N/A")
+        retry_count = headers.get("x-retry", 0)
 
         event_id = f"payment:{data['order_id']}"
 
         if redis_client.get(event_id):
-            log_event("payment-service", trace_id, "Duplicate event skipped", data)
+            log_event("payment-service", trace_id, "Duplicate skipped", data)
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
         redis_client.set(event_id, "1", ex=3600)
 
-        log_event("payment-service", trace_id, "Processing payment", data)
+        log_event(
+            "payment-service",
+            trace_id,
+            f"Processing payment (retry={retry_count})",
+            data
+        )
 
+        # simulate failure
         if data["order_id"] % 5 == 0:
             raise Exception("Simulated payment failure")
 
@@ -81,55 +102,61 @@ def callback(ch, method, properties, body):
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
-        log_event("payment-service", trace_id, "Payment processed + ACK sent", data)
+        log_event("payment-service", trace_id, "Payment processed", data)
 
     except Exception as e:
         err = str(e) if ENV == "dev" else "processing failed"
 
-        log_event("payment-service", trace_id, "Processing failed", {"error": err}, level="ERROR")
+        log_event(
+            "payment-service",
+            trace_id,
+            "Processing failed",
+            {"error": err},
+            level="ERROR"
+        )
 
-        retry_count = data.get("retry", 0)
+        headers = properties.headers or {}
+        retry_count = headers.get("x-retry", 0)
 
-        if retry_count >= 3:
-            log_event("payment-service", trace_id, "Max retries reached → DLQ", data, level="ERROR")
+        if retry_count < MAX_RETRIES:
+            new_headers = headers.copy()
+            new_headers["x-retry"] = retry_count + 1
 
-            data["version"] = "v1"
-
-            ch.basic_publish(
-                exchange='',
-                routing_key="payment_dlq",
-                body=json.dumps(data),
-                properties=pika.BasicProperties(
-                    delivery_mode=2,
-                    headers={"x-trace-id": trace_id}
-                )
+            log_event(
+                "payment-service",
+                trace_id,
+                f"Retrying ({retry_count + 1})",
+                {},
+                level="WARNING"
             )
 
-            ch.basic_ack(delivery_tag=method.delivery_tag)
+            publish(
+                "inventory_reserved",  # retry same input queue
+                json.loads(body),
+                trace_id,
+                headers=new_headers
+            )
 
         else:
-            retry_count += 1
-            data["retry"] = retry_count
-
-            delay = 2 ** retry_count if ENV != "prod" else 1
-
-            log_event("payment-service", trace_id, f"Retry {retry_count}", data, level="WARNING")
-
-            time.sleep(delay)
-
-            ch.basic_publish(
-                exchange='',
-                routing_key="inventory_reserved",
-                body=json.dumps(data),
-                properties=pika.BasicProperties(
-                    delivery_mode=2,
-                    headers={"x-trace-id": trace_id}
-                )
+            log_event(
+                "payment-service",
+                trace_id,
+                "Sending to DLQ",
+                {},
+                level="ERROR"
             )
 
-            ch.basic_ack(delivery_tag=method.delivery_tag)
+            publish(
+                "payment_dlq",
+                json.loads(body),
+                trace_id,
+                headers=headers
+            )
+
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
+# ---------- CONSUMER ----------
 def start_consumer():
     log_event("payment-service", "SYSTEM", f"Payment consumer started ({ENV})")
 
@@ -163,5 +190,11 @@ def start_consumer():
             channel.start_consuming()
 
         except Exception as e:
-            log_event("payment-service", "SYSTEM", "Consumer error", {"error": str(e)}, level="ERROR")
+            log_event(
+                "payment-service",
+                "SYSTEM",
+                "Consumer error",
+                {"error": str(e)},
+                level="ERROR"
+            )
             time.sleep(5)
