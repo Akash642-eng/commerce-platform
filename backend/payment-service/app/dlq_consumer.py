@@ -3,19 +3,44 @@ import json
 import os
 import time
 
+from .logger import log_event
+
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
+DLQ = "payment_dlq"
 
 
 def callback(ch, method, properties, body):
-    data = json.loads(body)
+    try:
+        data = json.loads(body)
 
-    print("💀 DLQ MESSAGE RECEIVED:", data, flush=True)
+        trace_id = (
+            properties.headers.get("x-trace-id")
+            if properties and properties.headers
+            else "N/A"
+        )
 
-    ch.basic_ack(delivery_tag=method.delivery_tag)
+        log_event(
+            "payment-service",
+            trace_id,
+            "💀 MESSAGE IN DLQ",
+            data,
+            level="ERROR"
+        )
+
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    except Exception as e:
+        log_event(
+            "payment-service",
+            "SYSTEM",
+            "DLQ processing error",
+            {"error": str(e)},
+            level="ERROR"
+        )
 
 
 def start_dlq_consumer():
-    print("🚀 DLQ consumer started", flush=True)
+    log_event("payment-service", "SYSTEM", "DLQ consumer started")
 
     while True:
         try:
@@ -24,19 +49,24 @@ def start_dlq_consumer():
             )
 
             channel = connection.channel()
-
-            channel.queue_declare(queue="payment_dlq", durable=True)
+            channel.queue_declare(queue=DLQ, durable=True)
 
             channel.basic_consume(
-                queue="payment_dlq",
+                queue=DLQ,
                 on_message_callback=callback,
                 auto_ack=False
             )
 
-            print("📡 Waiting for DLQ messages...", flush=True)
+            log_event("payment-service", "SYSTEM", "Waiting for DLQ messages")
 
             channel.start_consuming()
 
         except Exception as e:
-            print("❌ DLQ ERROR:", str(e), flush=True)
+            log_event(
+                "payment-service",
+                "SYSTEM",
+                "DLQ consumer retry",
+                {"error": str(e)},
+                level="ERROR"
+            )
             time.sleep(5)

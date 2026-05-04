@@ -6,20 +6,50 @@ import redis
 import os
 import uuid
 
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+
 from .config import SERVICES
 
 # Disable auto redirect (/health -> /health/)
 app = FastAPI(title="API Gateway", redirect_slashes=False)
 
-# Reserved routes (should not go through gateway)
-RESERVED_ROUTES = {"health", "docs", "openapi.json", "redoc"}
+# -------------------------
+# PROMETHEUS METRICS
+# -------------------------
+REQUEST_COUNT = Counter(
+    "gateway_requests_total",
+    "Total number of requests",
+    ["method", "endpoint", "status"]
+)
 
-# Health endpoint
+REQUEST_LATENCY = Histogram(
+    "gateway_request_latency_seconds",
+    "Request latency",
+    ["endpoint"]
+)
+
+# -------------------------
+# RESERVED ROUTES
+# -------------------------
+RESERVED_ROUTES = {"health", "docs", "openapi.json", "redoc", "metrics"}
+
+# -------------------------
+# HEALTH
+# -------------------------
 @app.get("/health")
 async def health():
     return {"status": "ok"}
 
+# -------------------------
+# METRICS ENDPOINT
+# -------------------------
+@app.get("/metrics")
+def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
+# -------------------------
+# CONFIG
+# -------------------------
 AUTH_SERVICE_URL = "http://auth-service:8000"
 
 ENV = os.getenv("ENV", "dev")
@@ -30,7 +60,9 @@ redis_client = redis.Redis(host=REDIS_HOST, port=6379, decode_responses=True)
 RATE_LIMIT = 5
 WINDOW_SIZE = 10
 
-
+# -------------------------
+# AUTH
+# -------------------------
 async def verify_token(request: Request):
     auth_header = request.headers.get("authorization")
 
@@ -54,7 +86,9 @@ async def verify_token(request: Request):
             raise HTTPException(status_code=401, detail="Auth service error (dev)")
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-
+# -------------------------
+# RATE LIMIT
+# -------------------------
 def check_rate_limit(client_id: str):
     key = f"rate_limit:{client_id}"
 
@@ -69,7 +103,9 @@ def check_rate_limit(client_id: str):
 
     redis_client.incr(key)
 
-
+# -------------------------
+# CACHE
+# -------------------------
 def get_cache_key(service, path, query):
     return f"cache:{service}:{path}:{query}"
 
@@ -82,7 +118,9 @@ def get_cached_response(key):
 def set_cache_response(key, data):
     redis_client.set(key, json.dumps(data), ex=15)
 
-
+# -------------------------
+# VALIDATION
+# -------------------------
 def validate_order_request(body):
     if not body:
         raise HTTPException(status_code=400, detail="Empty body")
@@ -96,16 +134,19 @@ def validate_order_request(body):
     if "total_amount" not in body:
         raise HTTPException(status_code=400, detail="total_amount required")
 
-
+# -------------------------
+# ROOT
+# -------------------------
 @app.get("/")
 def root():
     return {"message": f"API Gateway Running ({ENV})"}
 
-
+# -------------------------
+# MAIN GATEWAY ROUTE
+# -------------------------
 @app.api_route("/{service}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def gateway(service: str, path: str, request: Request):
 
-    # Block reserved/internal routes
     if service in RESERVED_ROUTES or service.startswith("health"):
         raise HTTPException(status_code=404, detail="Not found")
 
@@ -115,20 +156,18 @@ async def gateway(service: str, path: str, request: Request):
     trace_id = request.headers.get("x-trace-id", str(uuid.uuid4()))
     start_time = time.time()
 
-    if ENV == "dev":
-        print(f"[TRACE {trace_id}] Incoming {request.method} {service}/{path}", flush=True)
-        
-    if service != "auth":
-        user = await verify_token(request)
-        client_id = user["user"]["user_id"]
-        check_rate_limit(client_id)
-
-
-    base_url = SERVICES[service].rstrip("/")
-    final_path = path.lstrip("/")
-    url = f"{base_url}/{final_path}" if final_path else base_url
+    endpoint = f"{service}/{path}"
 
     try:
+        if service != "auth":
+            user = await verify_token(request)
+            client_id = user["user"]["user_id"]
+            check_rate_limit(client_id)
+
+        base_url = SERVICES[service].rstrip("/")
+        final_path = path.lstrip("/")
+        url = f"{base_url}/{final_path}" if final_path else base_url
+
         headers = dict(request.headers)
         headers.pop("host", None)
         headers["x-trace-id"] = trace_id
@@ -150,8 +189,7 @@ async def gateway(service: str, path: str, request: Request):
         if request.method == "GET":
             cached = get_cached_response(cache_key)
             if cached:
-                if ENV == "dev":
-                    print(f"[TRACE {trace_id}] ⚡ CACHE HIT", flush=True)
+                REQUEST_COUNT.labels(request.method, endpoint, "200").inc()
                 return cached
 
         timeout = 10.0 if ENV == "dev" else 5.0
@@ -170,10 +208,10 @@ async def gateway(service: str, path: str, request: Request):
         if request.method == "GET":
             set_cache_response(cache_key, response_data)
 
-        duration = round(time.time() - start_time, 3)
+        duration = time.time() - start_time
 
-        if ENV != "prod":
-            print(f"[TRACE {trace_id}] Completed in {duration}s", flush=True)
+        REQUEST_COUNT.labels(request.method, endpoint, str(response.status_code)).inc()
+        REQUEST_LATENCY.labels(endpoint).observe(duration)
 
         return Response(
             content=json.dumps(response_data),
@@ -183,6 +221,8 @@ async def gateway(service: str, path: str, request: Request):
         )
 
     except httpx.RequestError as e:
+        REQUEST_COUNT.labels(request.method, endpoint, "503").inc()
+
         if ENV == "dev":
             raise HTTPException(status_code=503, detail=str(e))
         raise HTTPException(status_code=503, detail="Service unavailable")

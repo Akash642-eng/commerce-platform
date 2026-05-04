@@ -15,15 +15,50 @@ redis_client = redis.Redis(host=REDIS_HOST, port=6379, decode_responses=True)
 
 MAX_RETRIES = 3
 
+MAIN_QUEUE = "inventory_reserved"
+RETRY_QUEUE = "payment_retry"
+DLQ = "payment_dlq"
+
+
+# ---------- CONNECTION ----------
+def get_connection():
+    return pika.BlockingConnection(
+        pika.ConnectionParameters(
+            host=RABBITMQ_HOST,
+            heartbeat=600,
+            blocked_connection_timeout=300
+        )
+    )
+
+
+# ---------- SETUP QUEUES ----------
+def setup_queues(channel):
+    # Main queue
+    channel.queue_declare(queue=MAIN_QUEUE, durable=True)
+
+    # Retry queue (TTL → back to main queue)
+    channel.queue_declare(
+        queue=RETRY_QUEUE,
+        durable=True,
+        arguments={
+            "x-message-ttl": 5000,  # 5 sec delay
+            "x-dead-letter-exchange": "",
+            "x-dead-letter-routing-key": MAIN_QUEUE
+        }
+    )
+
+    # DLQ
+    channel.queue_declare(queue=DLQ, durable=True)
+
+    # Output queues
+    channel.queue_declare(queue="payment_completed", durable=True)
+    channel.queue_declare(queue="payment_failed", durable=True)
+
 
 # ---------- COMMON PUBLISH ----------
 def publish(queue, message, trace_id, headers=None):
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=RABBITMQ_HOST)
-    )
+    connection = get_connection()
     channel = connection.channel()
-
-    channel.queue_declare(queue=queue, durable=True)
 
     final_headers = headers or {}
     final_headers["x-trace-id"] = trace_id
@@ -78,12 +113,11 @@ def callback(ch, method, properties, body):
 
         event_id = f"payment:{data['order_id']}"
 
+        # Idempotency
         if redis_client.get(event_id):
             log_event("payment-service", trace_id, "Duplicate skipped", data)
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
-
-        redis_client.set(event_id, "1", ex=3600)
 
         log_event(
             "payment-service",
@@ -97,6 +131,9 @@ def callback(ch, method, properties, body):
             raise Exception("Simulated payment failure")
 
         time.sleep(1 if ENV == "dev" else 0.5)
+
+        # Mark success only after processing
+        redis_client.set(event_id, "1", ex=3600)
 
         publish_payment_event(data, trace_id)
 
@@ -125,13 +162,13 @@ def callback(ch, method, properties, body):
             log_event(
                 "payment-service",
                 trace_id,
-                f"Retrying ({retry_count + 1})",
+                f"Sending to retry queue ({retry_count + 1})",
                 {},
                 level="WARNING"
             )
 
             publish(
-                "inventory_reserved",  # retry same input queue
+                RETRY_QUEUE,
                 json.loads(body),
                 trace_id,
                 headers=new_headers
@@ -147,7 +184,7 @@ def callback(ch, method, properties, body):
             )
 
             publish(
-                "payment_dlq",
+                DLQ,
                 json.loads(body),
                 trace_id,
                 headers=headers
@@ -162,25 +199,15 @@ def start_consumer():
 
     while True:
         try:
-            connection = pika.BlockingConnection(
-                pika.ConnectionParameters(
-                    host=RABBITMQ_HOST,
-                    heartbeat=600,
-                    blocked_connection_timeout=300
-                )
-            )
-
+            connection = get_connection()
             channel = connection.channel()
 
-            channel.queue_declare(queue="inventory_reserved", durable=True)
-            channel.queue_declare(queue="payment_completed", durable=True)
-            channel.queue_declare(queue="payment_failed", durable=True)
-            channel.queue_declare(queue="payment_dlq", durable=True)
+            setup_queues(channel)
 
             channel.basic_qos(prefetch_count=1)
 
             channel.basic_consume(
-                queue="inventory_reserved",
+                queue=MAIN_QUEUE,
                 on_message_callback=callback,
                 auto_ack=False
             )
