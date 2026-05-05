@@ -20,13 +20,15 @@ def publish(queue, message, headers=None):
 
     channel.queue_declare(queue=queue, durable=True)
 
+    final_headers = headers.copy() if headers else {}
+
     channel.basic_publish(
         exchange='',
         routing_key=queue,
         body=json.dumps(message),
         properties=pika.BasicProperties(
             delivery_mode=2,
-            headers=headers or {}
+            headers=final_headers
         )
     )
 
@@ -40,7 +42,11 @@ def publish_inventory_release(data, trace_id):
         "status": "RELEASED"
     }
 
-    publish("inventory_release", event, headers={"x-trace-id": trace_id})
+    publish(
+        "inventory_release",
+        event,
+        headers={"x-trace-id": trace_id}
+    )
 
     print("🔄 Sent inventory_release event:", event, flush=True)
 
@@ -48,13 +54,13 @@ def publish_inventory_release(data, trace_id):
 # ---------- CALLBACK ----------
 def callback(ch, method, properties, body):
     db = SessionLocal()
-    trace_id = "N/A"
+    trace_id = "unknown"
 
     try:
         data = json.loads(body)
 
         headers = properties.headers or {}
-        trace_id = headers.get("x-trace-id", "N/A")
+        trace_id = headers.get("x-trace-id", "unknown")
         retry_count = headers.get("x-retry", 0)
 
         print(f"❌ Payment failed event received (retry={retry_count}):", data, flush=True)
@@ -94,6 +100,7 @@ def callback(ch, method, properties, body):
         if retry_count < MAX_RETRIES:
             new_headers = headers.copy()
             new_headers["x-retry"] = retry_count + 1
+            new_headers["x-trace-id"] = trace_id   # ✅ FIX: preserve trace
 
             print(f"🔁 Retrying... {retry_count + 1}", flush=True)
 

@@ -10,12 +10,8 @@ from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_
 
 from .config import SERVICES
 
-# Disable auto redirect (/health -> /health/)
 app = FastAPI(title="API Gateway", redirect_slashes=False)
 
-# -------------------------
-# PROMETHEUS METRICS
-# -------------------------
 REQUEST_COUNT = Counter(
     "gateway_requests_total",
     "Total number of requests",
@@ -28,28 +24,19 @@ REQUEST_LATENCY = Histogram(
     ["endpoint"]
 )
 
-# -------------------------
-# RESERVED ROUTES
-# -------------------------
 RESERVED_ROUTES = {"health", "docs", "openapi.json", "redoc", "metrics"}
 
-# -------------------------
-# HEALTH
-# -------------------------
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
 
-# -------------------------
-# METRICS ENDPOINT
-# -------------------------
+
 @app.get("/metrics")
 def metrics():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
-# -------------------------
-# CONFIG
-# -------------------------
+
 AUTH_SERVICE_URL = "http://auth-service:8000"
 
 ENV = os.getenv("ENV", "dev")
@@ -60,9 +47,7 @@ redis_client = redis.Redis(host=REDIS_HOST, port=6379, decode_responses=True)
 RATE_LIMIT = 5
 WINDOW_SIZE = 10
 
-# -------------------------
-# AUTH
-# -------------------------
+
 async def verify_token(request: Request):
     auth_header = request.headers.get("authorization")
 
@@ -86,9 +71,7 @@ async def verify_token(request: Request):
             raise HTTPException(status_code=401, detail="Auth service error (dev)")
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-# -------------------------
-# RATE LIMIT
-# -------------------------
+
 def check_rate_limit(client_id: str):
     key = f"rate_limit:{client_id}"
 
@@ -103,9 +86,7 @@ def check_rate_limit(client_id: str):
 
     redis_client.incr(key)
 
-# -------------------------
-# CACHE
-# -------------------------
+
 def get_cache_key(service, path, query):
     return f"cache:{service}:{path}:{query}"
 
@@ -118,9 +99,7 @@ def get_cached_response(key):
 def set_cache_response(key, data):
     redis_client.set(key, json.dumps(data), ex=15)
 
-# -------------------------
-# VALIDATION
-# -------------------------
+
 def validate_order_request(body):
     if not body:
         raise HTTPException(status_code=400, detail="Empty body")
@@ -134,16 +113,12 @@ def validate_order_request(body):
     if "total_amount" not in body:
         raise HTTPException(status_code=400, detail="total_amount required")
 
-# -------------------------
-# ROOT
-# -------------------------
+
 @app.get("/")
 def root():
     return {"message": f"API Gateway Running ({ENV})"}
 
-# -------------------------
-# MAIN GATEWAY ROUTE
-# -------------------------
+
 @app.api_route("/{service}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def gateway(service: str, path: str, request: Request):
 
@@ -153,7 +128,7 @@ async def gateway(service: str, path: str, request: Request):
     if service not in SERVICES:
         raise HTTPException(status_code=404, detail="Service not found")
 
-    trace_id = request.headers.get("x-trace-id", str(uuid.uuid4()))
+    trace_id = request.headers.get("x-trace-id") or str(uuid.uuid4())
     start_time = time.time()
 
     endpoint = f"{service}/{path}"

@@ -11,7 +11,7 @@ router = APIRouter(prefix="/orders", tags=["Orders"])
 @router.post("/")
 def create_order(order: schemas.OrderCreate, request: Request, db: Session = Depends(get_db)):
 
-    trace_id = request.headers.get("x-trace-id", "N/A")
+    trace_id = request.headers.get("x-trace-id") or "unknown"
 
     new_order = models.Order(
         user_id=order.user_id,
@@ -40,7 +40,6 @@ def create_order(order: schemas.OrderCreate, request: Request, db: Session = Dep
         {"order_id": new_order.id, "status": "CREATED"}
     )
 
-    # send event
     publish_event("order_created", {
         "order_id": new_order.id,
         "user_id": str(new_order.user_id),
@@ -48,8 +47,3 @@ def create_order(order: schemas.OrderCreate, request: Request, db: Session = Dep
     }, trace_id)
 
     return {"order_id": new_order.id, "status": "CREATED"}
-
-
-@router.get("/")
-def get_orders(db: Session = Depends(get_db)):
-    return db.query(models.Order).all()

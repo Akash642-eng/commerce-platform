@@ -16,8 +16,7 @@ def publish_event(queue, data, trace_id=None):
 
     channel.queue_declare(queue=queue, durable=True)
 
-    if not trace_id:
-        trace_id = str(uuid.uuid4())  # ✅ NEW TRACE START
+    trace_id = trace_id or str(uuid.uuid4())
 
     channel.basic_publish(
         exchange='',

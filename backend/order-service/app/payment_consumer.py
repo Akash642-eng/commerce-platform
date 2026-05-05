@@ -38,14 +38,14 @@ def publish_to_queue(channel, queue_name, message, headers=None):
 def callback(ch, method, properties, body):
     db = SessionLocal()
 
-    trace_id = "N/A"
+    trace_id = "unknown"
 
     try:
         data = json.loads(body)
 
         headers = properties.headers or {}
         retry_count = headers.get("x-retry", 0)
-        trace_id = headers.get("x-trace-id", "N/A")
+        trace_id = headers.get("x-trace-id", "unknown")
 
         log_event("order-service", trace_id, f"Event received (retry={retry_count})", data)
 
@@ -60,12 +60,21 @@ def callback(ch, method, properties, body):
         event_id = f"order:{order.id}:{status}"
 
         if redis_client.get(event_id):
-            log_event("order-service", trace_id, "Duplicate event skipped", {"event_id": event_id}, level="WARNING")
+            log_event(
+                "order-service",
+                trace_id,
+                "Duplicate event skipped",
+                {"event_id": event_id},
+                level="WARNING"
+            )
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
         redis_client.set(event_id, "1", ex=3600)
 
+        # -------------------------
+        # RESERVED HANDLING (UNCHANGED)
+        # -------------------------
         if status == "RESERVED":
             old_status = order.status
 
@@ -81,6 +90,9 @@ def callback(ch, method, properties, body):
             else:
                 raise Exception(f"Invalid transition {order.status} → RESERVED")
 
+        # -------------------------
+        # SUCCESS HANDLING
+        # -------------------------
         elif status == "SUCCESS":
             old_status = order.status
 
@@ -95,7 +107,13 @@ def callback(ch, method, properties, body):
                 })
 
             elif order.status == "CREATED":
-                log_event("order-service", trace_id, "Fixing out-of-order", {"order_id": order.id}, level="WARNING")
+                log_event(
+                    "order-service",
+                    trace_id,
+                    "Fixing out-of-order",
+                    {"order_id": order.id},
+                    level="WARNING"
+                )
 
                 order.status = "RESERVED"
                 db.commit()
@@ -127,6 +145,7 @@ def callback(ch, method, properties, body):
         if retry_count < MAX_RETRIES:
             new_headers = headers.copy()
             new_headers["x-retry"] = retry_count + 1
+            new_headers["x-trace-id"] = trace_id  # 🔥 FIX
 
             log_event(
                 "order-service",
@@ -165,6 +184,9 @@ def callback(ch, method, properties, body):
         db.close()
 
 
+# -------------------------
+# PAYMENT CONSUMER
+# -------------------------
 def start_payment_consumer():
     log_event("order-service", "SYSTEM", f"Payment consumer started ({ENV})")
 
@@ -190,10 +212,19 @@ def start_payment_consumer():
             channel.start_consuming()
 
         except Exception as e:
-            log_event("order-service", "SYSTEM", "Retrying consumer", {"error": str(e)}, level="ERROR")
+            log_event(
+                "order-service",
+                "SYSTEM",
+                "Retrying consumer",
+                {"error": str(e)},
+                level="ERROR"
+            )
             time.sleep(5)
 
 
+# -------------------------
+# INVENTORY CONSUMER (UNCHANGED)
+# -------------------------
 def start_inventory_consumer():
     log_event("order-service", "SYSTEM", f"Inventory consumer started ({ENV})")
 
@@ -219,5 +250,11 @@ def start_inventory_consumer():
             channel.start_consuming()
 
         except Exception as e:
-            log_event("order-service", "SYSTEM", "Retrying consumer", {"error": str(e)}, level="ERROR")
+            log_event(
+                "order-service",
+                "SYSTEM",
+                "Retrying consumer",
+                {"error": str(e)},
+                level="ERROR"
+            )
             time.sleep(5)

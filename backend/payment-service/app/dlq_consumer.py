@@ -16,7 +16,7 @@ def callback(ch, method, properties, body):
         trace_id = (
             properties.headers.get("x-trace-id")
             if properties and properties.headers
-            else "N/A"
+            else "unknown"
         )
 
         log_event(

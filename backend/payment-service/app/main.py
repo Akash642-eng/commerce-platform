@@ -17,9 +17,8 @@ def start_background_consumers():
     t2.start()
 
 @app.on_event("startup")
-def on_startup():
+def startup_event():
     start_background_consumers()
-
 
 @app.get("/")
 def root():

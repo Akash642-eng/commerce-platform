@@ -6,19 +6,31 @@ import time
 from .logger import log_event
 
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
-
 MAX_RETRIES = 3
 
 
+def get_connection():
+    while True:
+        try:
+            return pika.BlockingConnection(
+                pika.ConnectionParameters(
+                    host=RABBITMQ_HOST,
+                    heartbeat=600,
+                    blocked_connection_timeout=300
+                )
+            )
+        except:
+            print("Retrying RabbitMQ connection...", flush=True)
+            time.sleep(5)
+
+
 def publish_to_queue(queue_name, message, trace_id, headers=None):
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=RABBITMQ_HOST)
-    )
+    connection = get_connection()
     channel = connection.channel()
 
     channel.queue_declare(queue=queue_name, durable=True)
 
-    final_headers = headers or {}
+    final_headers = headers.copy() if headers else {}
     final_headers["x-trace-id"] = trace_id
 
     channel.basic_publish(
@@ -31,6 +43,8 @@ def publish_to_queue(queue_name, message, trace_id, headers=None):
         )
     )
 
+    print(f"✅ Published → {queue_name}", flush=True)
+
     connection.close()
 
 
@@ -41,27 +55,22 @@ def publish_inventory_event(data, trace_id):
         "status": "RESERVED"
     }
 
-    publish_to_queue("inventory_reserved", event, trace_id)
+    publish_to_queue("inventory_reserved_order", event, trace_id)
+    publish_to_queue("inventory_reserved_payment", event, trace_id)
 
     log_event("inventory-service", trace_id, "Sent inventory_reserved", event)
 
 
 def callback(ch, method, properties, body):
-    trace_id = "N/A"
+    trace_id = "unknown"
 
     try:
         data = json.loads(body)
 
         headers = properties.headers or {}
-        retry_count = headers.get("x-retry", 0)
-        trace_id = headers.get("x-trace-id", "N/A")
+        trace_id = headers.get("x-trace-id", "unknown")
 
-        log_event(
-            "inventory-service",
-            trace_id,
-            f"Inventory received order (retry={retry_count})",
-            data
-        )
+        log_event("inventory-service", trace_id, "Inventory received", data)
 
         time.sleep(1)
 
@@ -69,55 +78,8 @@ def callback(ch, method, properties, body):
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
-        log_event("inventory-service", trace_id, "Inventory reserved", data)
-
     except Exception as e:
-        log_event(
-            "inventory-service",
-            trace_id,
-            "Inventory error",
-            {"error": str(e)},
-            level="ERROR"
-        )
-
-        headers = properties.headers or {}
-        retry_count = headers.get("x-retry", 0)
-
-        if retry_count < MAX_RETRIES:
-            new_headers = headers.copy()
-            new_headers["x-retry"] = retry_count + 1
-
-            log_event(
-                "inventory-service",
-                trace_id,
-                f"Retrying message ({retry_count + 1})",
-                {},
-                level="WARNING"
-            )
-
-            publish_to_queue(
-                "order_created",
-                json.loads(body),
-                trace_id,
-                headers=new_headers
-            )
-
-        else:
-            log_event(
-                "inventory-service",
-                trace_id,
-                "Sending to DLQ",
-                {},
-                level="ERROR"
-            )
-
-            publish_to_queue(
-                "order_created_dlq",
-                json.loads(body),
-                trace_id,
-                headers=headers
-            )
-
+        log_event("inventory-service", trace_id, "Error", {"error": str(e)}, level="ERROR")
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
@@ -126,15 +88,14 @@ def start_consumer():
 
     while True:
         try:
-            connection = pika.BlockingConnection(
-                pika.ConnectionParameters(host=RABBITMQ_HOST)
-            )
-
+            connection = get_connection()
             channel = connection.channel()
 
             channel.queue_declare(queue="order_created", durable=True)
-            channel.queue_declare(queue="order_created_dlq", durable=True)
-            channel.queue_declare(queue="inventory_reserved", durable=True)
+            channel.queue_declare(queue="inventory_reserved_order", durable=True)
+            channel.queue_declare(queue="inventory_reserved_payment", durable=True)
+
+            channel.basic_qos(prefetch_count=1)
 
             channel.basic_consume(
                 queue="order_created",
@@ -147,6 +108,5 @@ def start_consumer():
             channel.start_consuming()
 
         except Exception as e:
-            log_event("inventory-service", "SYSTEM", "Retry error", {"error": str(e)}, level="ERROR")
-            log_event("inventory-service", "SYSTEM", "Retrying in 5 seconds", level="WARNING")
+            log_event("inventory-service", "SYSTEM", "Crash", {"error": str(e)}, level="ERROR")
             time.sleep(5)
