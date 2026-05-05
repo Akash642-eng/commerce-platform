@@ -43,7 +43,7 @@ def publish_to_queue(queue_name, message, trace_id, headers=None):
         )
     )
 
-    print(f"✅ Published → {queue_name}", flush=True)
+    print(f" Published → {queue_name}", flush=True)
 
     connection.close()
 

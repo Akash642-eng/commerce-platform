@@ -17,7 +17,7 @@ def get_connection():
                 )
             )
         except:
-            print("❌ Retry connection in 5s...", flush=True)
+            print("Retry connection in 5s...", flush=True)
             time.sleep(5)
 
 
@@ -25,20 +25,20 @@ def callback(ch, method, properties, body):
     try:
         data = json.loads(body)
 
-        print("🔄 Inventory release received:", data, flush=True)
+        print("Inventory release received:", data, flush=True)
 
         time.sleep(1)
 
-        print(f"📦 Stock released for order {data['order_id']}", flush=True)
+        print(f"Stock released for order {data['order_id']}", flush=True)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except Exception as e:
-        print("❌ Release error:", str(e), flush=True)
+        print("Release error:", str(e), flush=True)
 
 
 def start_release_consumer():
-    print("🚀 Inventory release consumer started", flush=True)
+    print("Inventory release consumer started", flush=True)
 
     while True:
         try:
@@ -53,10 +53,10 @@ def start_release_consumer():
                 auto_ack=False
             )
 
-            print("📡 Waiting for inventory_release...", flush=True)
+            print("Waiting for inventory_release...", flush=True)
 
             channel.start_consuming()
 
         except Exception as e:
-            print("❌ Retry:", str(e), flush=True)
+            print("Retry:", str(e), flush=True)
             time.sleep(5)

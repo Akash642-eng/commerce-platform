@@ -4,7 +4,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from fastapi.responses import JSONResponse
 
-# simple in-memory store
+
 REQUEST_LOG = {}
 
 RATE_LIMIT = 10        # requests
@@ -20,13 +20,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if client_ip not in REQUEST_LOG:
             REQUEST_LOG[client_ip] = []
 
-        # remove old requests
+
         REQUEST_LOG[client_ip] = [
             t for t in REQUEST_LOG[client_ip]
             if current_time - t < WINDOW_SIZE
         ]
 
-        # check limit
+    
         if len(REQUEST_LOG[client_ip]) >= RATE_LIMIT:
             return JSONResponse(
                 status_code=429,
