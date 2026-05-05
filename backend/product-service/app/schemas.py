@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-# Category Schemas
+#Category
 class CategoryCreate(BaseModel):
     name: str
     description: str
@@ -15,7 +15,7 @@ class CategoryResponse(BaseModel):
         from_attributes = True
 
 
-# Product Schemas
+#Product
 class ProductCreate(BaseModel):
     name: str
     description: str
