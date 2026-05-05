@@ -22,7 +22,7 @@ def callback(ch, method, properties, body):
         log_event(
             "payment-service",
             trace_id,
-            "💀 MESSAGE IN DLQ",
+            "MESSAGE IN DLQ",
             data,
             level="ERROR"
         )

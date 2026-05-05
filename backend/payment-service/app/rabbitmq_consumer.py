@@ -15,7 +15,6 @@ redis_client = redis.Redis(host=REDIS_HOST, port=6379, decode_responses=True)
 
 MAX_RETRIES = 3
 
-# 🔥 FIXED QUEUE
 MAIN_QUEUE = "inventory_reserved_payment"
 RETRY_QUEUE = "payment_retry"
 DLQ = "payment_dlq"
