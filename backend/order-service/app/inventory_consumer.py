@@ -18,7 +18,7 @@ def callback(ch, method, properties, body):
         headers = properties.headers or {}
         trace_id = headers.get("x-trace-id", "unknown")
 
-        print(f"📦 Inventory event received: {data} trace={trace_id}", flush=True)
+        print(f"Inventory event received: {data} trace={trace_id}", flush=True)
 
         order = db.query(Order).filter(Order.id == data["order_id"]).first()
 
@@ -29,7 +29,7 @@ def callback(ch, method, properties, body):
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except Exception as e:
-        print(f"❌ Error: {str(e)}", flush=True)
+        print(f"Error: {str(e)}", flush=True)
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     finally:
@@ -37,7 +37,7 @@ def callback(ch, method, properties, body):
 
 
 def start_inventory_consumer():
-    print("🚀 Inventory consumer started", flush=True)
+    print("Inventory consumer started", flush=True)
 
     while True:
         try:
@@ -55,7 +55,7 @@ def start_inventory_consumer():
                 auto_ack=False
             )
 
-            print("📡 Waiting for inventory_reserved_order...", flush=True)
+            print("Waiting for inventory_reserved_order...", flush=True)
 
             channel.start_consuming()
 

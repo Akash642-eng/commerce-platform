@@ -21,7 +21,7 @@ def root():
 
 
 def start_all_consumers():
-    print("🚀 Starting all order-service consumers...", flush=True)
+    print("Starting all order-service consumers...", flush=True)
 
     threading.Thread(target=start_payment_consumer, daemon=True).start()
     threading.Thread(target=start_failed_consumer, daemon=True).start()

@@ -72,9 +72,7 @@ def callback(ch, method, properties, body):
 
         redis_client.set(event_id, "1", ex=3600)
 
-        # -------------------------
-        # RESERVED HANDLING (UNCHANGED)
-        # -------------------------
+
         if status == "RESERVED":
             old_status = order.status
 
@@ -90,9 +88,7 @@ def callback(ch, method, properties, body):
             else:
                 raise Exception(f"Invalid transition {order.status} → RESERVED")
 
-        # -------------------------
-        # SUCCESS HANDLING
-        # -------------------------
+    
         elif status == "SUCCESS":
             old_status = order.status
 
@@ -184,9 +180,6 @@ def callback(ch, method, properties, body):
         db.close()
 
 
-# -------------------------
-# PAYMENT CONSUMER
-# -------------------------
 def start_payment_consumer():
     log_event("order-service", "SYSTEM", f"Payment consumer started ({ENV})")
 
@@ -222,9 +215,6 @@ def start_payment_consumer():
             time.sleep(5)
 
 
-# -------------------------
-# INVENTORY CONSUMER (UNCHANGED)
-# -------------------------
 def start_inventory_consumer():
     log_event("order-service", "SYSTEM", f"Inventory consumer started ({ENV})")
 
