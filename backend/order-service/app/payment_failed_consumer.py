@@ -11,7 +11,6 @@ RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 MAX_RETRIES = 3
 
 
-# ---------- COMMON PUBLISH ----------
 def publish(queue, message, headers=None):
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(host=RABBITMQ_HOST)
@@ -35,7 +34,6 @@ def publish(queue, message, headers=None):
     connection.close()
 
 
-# ---------- INVENTORY RELEASE ----------
 def publish_inventory_release(data, trace_id):
     event = {
         "order_id": data["order_id"],
@@ -48,10 +46,9 @@ def publish_inventory_release(data, trace_id):
         headers={"x-trace-id": trace_id}
     )
 
-    print("🔄 Sent inventory_release event:", event, flush=True)
+    print("Sent inventory_release event:", event, flush=True)
 
 
-# ---------- CALLBACK ----------
 def callback(ch, method, properties, body):
     db = SessionLocal()
     trace_id = "unknown"
@@ -63,7 +60,7 @@ def callback(ch, method, properties, body):
         trace_id = headers.get("x-trace-id", "unknown")
         retry_count = headers.get("x-retry", 0)
 
-        print(f"❌ Payment failed event received (retry={retry_count}):", data, flush=True)
+        print(f" Payment failed event received (retry={retry_count}):", data, flush=True)
 
         order = db.query(Order).filter(Order.id == data["order_id"]).first()
 
@@ -72,16 +69,15 @@ def callback(ch, method, properties, body):
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
-        # ✅ IDEMPOTENCY
         if order.status == "FAILED":
-            print(f"⚠️ Duplicate FAILED ignored for order {order.id}", flush=True)
+            print(f"Duplicate FAILED ignored for order {order.id}", flush=True)
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
         if can_transition(order.status, "FAILED"):
             order.status = "FAILED"
             db.commit()
-            print(f"🚫 Order {order.id} moved to FAILED", flush=True)
+            print(f"Order {order.id} moved to FAILED", flush=True)
 
             # rollback inventory
             publish_inventory_release(data, trace_id)
@@ -92,7 +88,7 @@ def callback(ch, method, properties, body):
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except Exception as e:
-        print("❌ Error:", str(e), flush=True)
+        print("Error:", str(e), flush=True)
 
         headers = properties.headers or {}
         retry_count = headers.get("x-retry", 0)
@@ -102,7 +98,7 @@ def callback(ch, method, properties, body):
             new_headers["x-retry"] = retry_count + 1
             new_headers["x-trace-id"] = trace_id   # ✅ FIX: preserve trace
 
-            print(f"🔁 Retrying... {retry_count + 1}", flush=True)
+            print(f"Retrying... {retry_count + 1}", flush=True)
 
             publish(
                 "payment_failed",
@@ -111,7 +107,7 @@ def callback(ch, method, properties, body):
             )
 
         else:
-            print("💀 Sending to DLQ", flush=True)
+            print("Sending to DLQ", flush=True)
 
             publish(
                 "payment_failed_dlq",
@@ -125,9 +121,8 @@ def callback(ch, method, properties, body):
         db.close()
 
 
-# ---------- CONSUMER ----------
 def start_failed_consumer():
-    print("🚀 Payment FAILED consumer started", flush=True)
+    print("Payment FAILED consumer started", flush=True)
 
     while True:
         try:
@@ -146,9 +141,9 @@ def start_failed_consumer():
                 auto_ack=False
             )
 
-            print("📡 Waiting for payment_failed events...", flush=True)
+            print("Waiting for payment_failed events...", flush=True)
             channel.start_consuming()
 
         except Exception as e:
-            print("❌ Retry:", str(e), flush=True)
+            print(" Retry:", str(e), flush=True)
             time.sleep(5)
