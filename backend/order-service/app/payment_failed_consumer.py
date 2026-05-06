@@ -123,7 +123,7 @@ def callback(ch, method, properties, body):
 
 
 def start_failed_consumer():
-    log_event("order-service", "system", "Payment FAILED consumer started",{})
+    log_event("order-service", "SYSTEM", "Payment FAILED consumer started",{})
 
     while True:
         try:
@@ -142,10 +142,10 @@ def start_failed_consumer():
                 auto_ack=False
             )
 
-            log_event("order-service", "system", "Waiting for payment_failed events...",{})
+            log_event("order-service", "SYSTEM", "Waiting for payment_failed events...",{})
             channel.start_consuming()
 
         except Exception as e:
-            log_event("order-service", "system", "Consumer retry", {"error": str(e)}, level="ERROR")
+            log_event("order-service", "SYSTEM", "Consumer retry", {"error": str(e)}, level="ERROR")
     
             time.sleep(5)

@@ -31,7 +31,7 @@ def callback(ch, method, properties, body):
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except Exception as e:
-        log_event("order-service", "system", "Error processing inventory event", {"error": str(e)}, level="ERROR")
+        log_event("order-service", "SYSTEM", "Error processing inventory event", {"error": str(e)}, level="ERROR")
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     finally:
@@ -39,7 +39,7 @@ def callback(ch, method, properties, body):
 
 
 def start_inventory_consumer():
-    log_event("order-service", "system", "Inventory consumer started", {})
+    log_event("order-service", "SYSTEM", "Inventory consumer started", {})
 
     while True:
         try:
@@ -57,10 +57,10 @@ def start_inventory_consumer():
                 auto_ack=False
             )
 
-            log_event("order-service", "system", "Waiting for inventory_reserved_order...", {})
+            log_event("order-service", "SYSTEM", "Waiting for inventory_reserved_order...", {})
 
             channel.start_consuming()
 
         except Exception as e:
-            log_event("order-service", "system", "Consumer retry", {"error": str(e)}, level="ERROR")
+            log_event("order-service", "SYSTEM", "Consumer retry", {"error": str(e)}, level="ERROR")
             time.sleep(5)

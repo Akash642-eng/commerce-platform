@@ -23,7 +23,7 @@ def root():
 
 
 def start_all_consumers():
-    log_event("order-service", "system", "Starting all order-service consumers...", {})
+    log_event("order-service", "SYSTEM", "Starting all order-service consumers...", {})
 
     threading.Thread(target=start_payment_consumer, daemon=True).start()
     threading.Thread(target=start_failed_consumer, daemon=True).start()

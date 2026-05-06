@@ -19,7 +19,7 @@ def get_connection():
                 )
             )
         except:
-            log_event("inventory-service", "system", "Failed to connect to RabbitMQ", {}, level="ERROR")
+            log_event("inventory-service", "SYSTEM", "Failed to connect to RabbitMQ", {}, level="ERROR")
             time.sleep(5)
 
 
@@ -27,20 +27,20 @@ def callback(ch, method, properties, body):
     try:
         data = json.loads(body)
 
-        log_event("inventory-service", "system", "Inventory release received", data)
+        log_event("inventory-service", "SYSTEM", "Inventory release received", data)
 
         time.sleep(1)
 
-        log_event("inventory-service", "system", f"Stock released for order {data['order_id']}", {})
+        log_event("inventory-service", "SYSTEM", f"Stock released for order {data['order_id']}", {})
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except Exception as e:
-        log_event("inventory-service", "system", "Error occurred while processing inventory release", {"error": str(e)}, level="ERROR")
+        log_event("inventory-service", "SYSTEM", "Error occurred while processing inventory release", {"error": str(e)}, level="ERROR")
 
 
 def start_release_consumer():
-    log_event("inventory-service", "system", "Inventory release consumer started", {})
+    log_event("inventory-service", "SYSTEM", "Inventory release consumer started", {})
 
     while True:
         try:
@@ -55,10 +55,10 @@ def start_release_consumer():
                 auto_ack=False
             )
 
-            log_event("inventory-service", "system", "Waiting for inventory_release...", {})
+            log_event("inventory-service", "SYSTEM", "Waiting for inventory_release...", {})
 
             channel.start_consuming()
 
         except Exception as e:
-            log_event("inventory-service", "system", "Error occurred while starting inventory release consumer", {"error": str(e)}, level="ERROR")
+            log_event("inventory-service", "SYSTEM", "Error occurred while starting inventory release consumer", {"error": str(e)}, level="ERROR")
             time.sleep(5)

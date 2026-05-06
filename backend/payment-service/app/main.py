@@ -10,7 +10,7 @@ app = FastAPI()
 
 
 def start_background_consumers():
-    log_event("payment-service", "system", "Starting all consumers...", {})
+    log_event("payment-service", "SYSTEM", "Starting all consumers...", {})
 
     t1 = threading.Thread(target=start_consumer, daemon=True)
     t2 = threading.Thread(target=start_dlq_consumer, daemon=True)
@@ -24,5 +24,5 @@ def startup_event():
 
 @app.get("/")
 def root():
-    log_event("payment-service", "system", "Root endpoint accessed", {})
+    log_event("payment-service", "SYSTEM", "Root endpoint accessed", {})
     return {"message": "Payment Service Running"}
