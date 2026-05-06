@@ -10,7 +10,7 @@ from .inventory_consumer import start_inventory_consumer
 
 from .logger import log_event
 
-app = FastAPI(title="Order Service")
+app = FastAPI(redirect_slashes= False)
 
 Base.metadata.create_all(bind=engine)
 
