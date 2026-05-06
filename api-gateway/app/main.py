@@ -42,7 +42,11 @@ AUTH_SERVICE_URL = "http://auth-service:8000"
 ENV = os.getenv("ENV", "dev")
 
 REDIS_HOST = os.getenv("REDIS_HOST", "redis")
-redis_client = redis.Redis(host=REDIS_HOST, port=6379, decode_responses=True)
+redis_client = redis.Redis(
+    host=REDIS_HOST,
+    port=6379,
+    decode_responses=True
+)
 
 RATE_LIMIT = 5
 WINDOW_SIZE = 10
@@ -58,7 +62,9 @@ async def verify_token(request: Request):
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get(
                 f"{AUTH_SERVICE_URL}/auth/me",
-                headers={"Authorization": auth_header}
+                headers={
+                    "Authorization": auth_header
+                }
             )
 
         if response.status_code != 200:
@@ -68,8 +74,15 @@ async def verify_token(request: Request):
 
     except Exception:
         if ENV == "dev":
-            raise HTTPException(status_code=401, detail="Auth service error (dev)")
-        raise HTTPException(status_code=401, detail="Unauthorized")
+            raise HTTPException(
+                status_code=401,
+                detail="Auth service error (dev)"
+            )
+
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized"
+        )
 
 
 def check_rate_limit(client_id: str):
@@ -82,7 +95,10 @@ def check_rate_limit(client_id: str):
         return
 
     if int(current) >= RATE_LIMIT:
-        raise HTTPException(status_code=429, detail="Too many requests")
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests"
+        )
 
     redis_client.incr(key)
 
@@ -93,82 +109,145 @@ def get_cache_key(service, path, query):
 
 def get_cached_response(key):
     cached = redis_client.get(key)
+
     return json.loads(cached) if cached else None
 
 
 def set_cache_response(key, data):
-    redis_client.set(key, json.dumps(data), ex=15)
+    redis_client.set(
+        key,
+        json.dumps(data),
+        ex=15
+    )
 
 
 def validate_order_request(body):
     if not body:
-        raise HTTPException(status_code=400, detail="Empty body")
+        raise HTTPException(
+            status_code=400,
+            detail="Empty body"
+        )
 
     if "user_id" not in body:
-        raise HTTPException(status_code=400, detail="user_id required")
+        raise HTTPException(
+            status_code=400,
+            detail="user_id required"
+        )
 
     if "items" not in body or not isinstance(body["items"], list):
-        raise HTTPException(status_code=400, detail="items must be list")
+        raise HTTPException(
+            status_code=400,
+            detail="items must be list"
+        )
 
     if "total_amount" not in body:
-        raise HTTPException(status_code=400, detail="total_amount required")
+        raise HTTPException(
+            status_code=400,
+            detail="total_amount required"
+        )
 
 
 @app.get("/")
 def root():
-    return {"message": f"API Gateway Running ({ENV})"}
+    return {
+        "message": f"API Gateway Running ({ENV})"
+    }
 
 
-@app.api_route("/{service}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+@app.api_route(
+    "/{service}/{path:path}",
+    methods=["GET", "POST", "PUT", "DELETE", "PATCH"]
+)
 async def gateway(service: str, path: str, request: Request):
 
     if service in RESERVED_ROUTES or service.startswith("health"):
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Not found"
+        )
 
     if service not in SERVICES:
-        raise HTTPException(status_code=404, detail="Service not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Service not found"
+        )
 
     trace_id = request.headers.get("x-trace-id") or str(uuid.uuid4())
+
     start_time = time.time()
 
     endpoint = f"{service}/{path}"
 
     try:
+
+        # ---------- AUTH ----------
         if service != "auth":
             user = await verify_token(request)
+
             client_id = user["user"]["user_id"]
+
             check_rate_limit(client_id)
 
-        base_url = SERVICES[service].rstrip("/")
-        final_path = path.lstrip("/")
-        url = f"{base_url}/{final_path}" if final_path else base_url
+        # ---------- URL BUILD ----------
+        service_url = SERVICES[service].rstrip("/")
 
+        target_path = "/" + path.lstrip("/")
+
+        # FIXED TRAILING SLASH ISSUE
+        if not target_path.endswith("/"):
+            target_path += "/"
+
+        url = f"{service_url}{target_path}"
+
+        # ---------- HEADERS ----------
         headers = dict(request.headers)
+
         headers.pop("host", None)
+
         headers["x-trace-id"] = trace_id
 
+        # ---------- BODY ----------
         raw_body = await request.body()
 
         parsed_body = None
+
         if raw_body:
             try:
                 parsed_body = json.loads(raw_body)
-            except:
-                raise HTTPException(status_code=400, detail="Invalid JSON")
 
+            except Exception:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid JSON"
+                )
+
+        # ---------- VALIDATION ----------
         if service == "orders" and request.method == "POST":
             validate_order_request(parsed_body)
 
-        cache_key = get_cache_key(service, path, str(request.query_params))
+        # ---------- CACHE ----------
+        cache_key = get_cache_key(
+            service,
+            path,
+            str(request.query_params)
+        )
 
         if request.method == "GET":
             cached = get_cached_response(cache_key)
+
             if cached:
-                REQUEST_COUNT.labels(request.method, endpoint, "200").inc()
+                REQUEST_COUNT.labels(
+                    request.method,
+                    endpoint,
+                    "200"
+                ).inc()
+
                 return cached
 
+        # ---------- TIMEOUT ----------
         timeout = 10.0 if ENV == "dev" else 5.0
 
+        # ---------- FORWARD REQUEST ----------
         async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.request(
                 method=request.method,
@@ -178,26 +257,55 @@ async def gateway(service: str, path: str, request: Request):
                 content=raw_body if raw_body else None
             )
 
-        response_data = response.json()
+        # ---------- SAFE JSON PARSE ----------
+        try:
+            response_data = response.json()
 
+        except Exception:
+            response_data = {
+                "message": response.text
+            }
+
+        # ---------- CACHE SAVE ----------
         if request.method == "GET":
             set_cache_response(cache_key, response_data)
 
         duration = time.time() - start_time
 
-        REQUEST_COUNT.labels(request.method, endpoint, str(response.status_code)).inc()
+        # ---------- METRICS ----------
+        REQUEST_COUNT.labels(
+            request.method,
+            endpoint,
+            str(response.status_code)
+        ).inc()
+
         REQUEST_LATENCY.labels(endpoint).observe(duration)
 
+        # ---------- FINAL RESPONSE ----------
         return Response(
             content=json.dumps(response_data),
             status_code=response.status_code,
             media_type="application/json",
-            headers={"x-trace-id": trace_id}
+            headers={
+                "x-trace-id": trace_id
+            }
         )
 
     except httpx.RequestError as e:
-        REQUEST_COUNT.labels(request.method, endpoint, "503").inc()
+
+        REQUEST_COUNT.labels(
+            request.method,
+            endpoint,
+            "503"
+        ).inc()
 
         if ENV == "dev":
-            raise HTTPException(status_code=503, detail=str(e))
-        raise HTTPException(status_code=503, detail="Service unavailable")
+            raise HTTPException(
+                status_code=503,
+                detail=str(e)
+            )
+
+        raise HTTPException(
+            status_code=503,
+            detail="Service unavailable"
+        )
