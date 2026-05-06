@@ -6,6 +6,8 @@ from .database import SessionLocal
 from .models import Order
 from .state_machine import can_transition
 
+from .logger import log_event
+
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 
 MAX_RETRIES = 3
@@ -46,7 +48,7 @@ def publish_inventory_release(data, trace_id):
         headers={"x-trace-id": trace_id}
     )
 
-    print("Sent inventory_release event:", event, flush=True)
+    log_event("order-service", trace_id, "Sent inventory_release", event)
 
 
 def callback(ch, method, properties, body):
@@ -59,27 +61,26 @@ def callback(ch, method, properties, body):
         headers = properties.headers or {}
         trace_id = headers.get("x-trace-id", "unknown")
         retry_count = headers.get("x-retry", 0)
-
-        print(f" Payment failed event received (retry={retry_count}):", data, flush=True)
+        
+        log_event("order-service", trace_id, f"Payment failed received (retry={retry_count})", data)
 
         order = db.query(Order).filter(Order.id == data["order_id"]).first()
 
         if not order:
-            print("❌ Order not found", flush=True)
+            log_event("order-service", trace_id, "Order not found", data, level="WARNING")
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
         if order.status == "FAILED":
-            print(f"Duplicate FAILED ignored for order {order.id}", flush=True)
+            log_event("order-service", trace_id, f"Duplicate FAILED ignored for order {order.id}", data, level="WARNING")
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
         if can_transition(order.status, "FAILED"):
             order.status = "FAILED"
             db.commit()
-            print(f"Order {order.id} moved to FAILED", flush=True)
+            log_event("order-service", trace_id, f"Order {order.id} moved to FAILED", data)
 
-            # rollback inventory
             publish_inventory_release(data, trace_id)
 
         else:
@@ -88,7 +89,7 @@ def callback(ch, method, properties, body):
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except Exception as e:
-        print("Error:", str(e), flush=True)
+        log_event("order-service", trace_id, "Error processing payment failed event", {"error": str(e)}, level="ERROR")
 
         headers = properties.headers or {}
         retry_count = headers.get("x-retry", 0)
@@ -96,9 +97,9 @@ def callback(ch, method, properties, body):
         if retry_count < MAX_RETRIES:
             new_headers = headers.copy()
             new_headers["x-retry"] = retry_count + 1
-            new_headers["x-trace-id"] = trace_id   # ✅ FIX: preserve trace
+            new_headers["x-trace-id"] = trace_id  
 
-            print(f"Retrying... {retry_count + 1}", flush=True)
+            log_event("order-service", trace_id, f"Retrying... {retry_count + 1}", data)
 
             publish(
                 "payment_failed",
@@ -107,7 +108,7 @@ def callback(ch, method, properties, body):
             )
 
         else:
-            print("Sending to DLQ", flush=True)
+            log_event("order-service", trace_id, "Sending to DLQ", data)
 
             publish(
                 "payment_failed_dlq",
@@ -122,7 +123,7 @@ def callback(ch, method, properties, body):
 
 
 def start_failed_consumer():
-    print("Payment FAILED consumer started", flush=True)
+    log_event("order-service", "system", "Payment FAILED consumer started",{})
 
     while True:
         try:
@@ -141,9 +142,10 @@ def start_failed_consumer():
                 auto_ack=False
             )
 
-            print("Waiting for payment_failed events...", flush=True)
+            log_event("order-service", "system", "Waiting for payment_failed events...",{})
             channel.start_consuming()
 
         except Exception as e:
-            print(" Retry:", str(e), flush=True)
+            log_event("order-service", "system", "Consumer retry", {"error": str(e)}, level="ERROR")
+    
             time.sleep(5)
