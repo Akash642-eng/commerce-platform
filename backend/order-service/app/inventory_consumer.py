@@ -6,6 +6,8 @@ from .database import SessionLocal
 from .models import Order
 from .state_machine import can_transition
 
+from .logger import log_event
+
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 
 
@@ -18,7 +20,7 @@ def callback(ch, method, properties, body):
         headers = properties.headers or {}
         trace_id = headers.get("x-trace-id", "unknown")
 
-        print(f"Inventory event received: {data} trace={trace_id}", flush=True)
+        log_event("order-service", trace_id, f"Inventory event received: {data}", data)
 
         order = db.query(Order).filter(Order.id == data["order_id"]).first()
 
@@ -29,7 +31,7 @@ def callback(ch, method, properties, body):
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except Exception as e:
-        print(f"Error: {str(e)}", flush=True)
+        log_event("order-service", "system", "Error processing inventory event", {"error": str(e)}, level="ERROR")
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     finally:
@@ -37,7 +39,7 @@ def callback(ch, method, properties, body):
 
 
 def start_inventory_consumer():
-    print("Inventory consumer started", flush=True)
+    log_event("order-service", "system", "Inventory consumer started", {})
 
     while True:
         try:
@@ -55,10 +57,10 @@ def start_inventory_consumer():
                 auto_ack=False
             )
 
-            print("Waiting for inventory_reserved_order...", flush=True)
+            log_event("order-service", "system", "Waiting for inventory_reserved_order...", {})
 
             channel.start_consuming()
 
         except Exception as e:
-            print("Retry:", str(e), flush=True)
+            log_event("order-service", "system", "Consumer retry", {"error": str(e)}, level="ERROR")
             time.sleep(5)
