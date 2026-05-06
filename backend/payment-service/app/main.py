@@ -4,11 +4,13 @@ import threading
 from .rabbitmq_consumer import start_consumer
 from .dlq_consumer import start_dlq_consumer
 
+from logger import log_event
+
 app = FastAPI()
 
 
 def start_background_consumers():
-    print("🔥 Starting all consumers...", flush=True)
+    log_event("payment-service", "system", "Starting all consumers...", {})
 
     t1 = threading.Thread(target=start_consumer, daemon=True)
     t2 = threading.Thread(target=start_dlq_consumer, daemon=True)
@@ -22,4 +24,5 @@ def startup_event():
 
 @app.get("/")
 def root():
+    log_event("payment-service", "system", "Root endpoint accessed", {})
     return {"message": "Payment Service Running"}

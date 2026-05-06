@@ -1,6 +1,7 @@
 import json
 import datetime
 
+from .logger import log_event
 
 def log_event(service: str, trace_id: str, message: str, data: dict = None, level="INFO"):
     log = {

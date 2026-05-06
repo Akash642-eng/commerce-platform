@@ -3,6 +3,8 @@ import json
 import os
 import time
 
+from .logger import log_event
+
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 
 
@@ -17,7 +19,7 @@ def get_connection():
                 )
             )
         except:
-            print("Retry connection in 5s...", flush=True)
+            log_event("inventory-service", "system", "Failed to connect to RabbitMQ", {}, level="ERROR")
             time.sleep(5)
 
 
@@ -25,20 +27,20 @@ def callback(ch, method, properties, body):
     try:
         data = json.loads(body)
 
-        print("Inventory release received:", data, flush=True)
+        log_event("inventory-service", "system", "Inventory release received", data)
 
         time.sleep(1)
 
-        print(f"Stock released for order {data['order_id']}", flush=True)
+        log_event("inventory-service", "system", f"Stock released for order {data['order_id']}", {})
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except Exception as e:
-        print("Release error:", str(e), flush=True)
+        log_event("inventory-service", "system", "Error occurred while processing inventory release", {"error": str(e)}, level="ERROR")
 
 
 def start_release_consumer():
-    print("Inventory release consumer started", flush=True)
+    log_event("inventory-service", "system", "Inventory release consumer started", {})
 
     while True:
         try:
@@ -53,10 +55,10 @@ def start_release_consumer():
                 auto_ack=False
             )
 
-            print("Waiting for inventory_release...", flush=True)
+            log_event("inventory-service", "system", "Waiting for inventory_release...", {})
 
             channel.start_consuming()
 
         except Exception as e:
-            print("Retry:", str(e), flush=True)
+            log_event("inventory-service", "system", "Error occurred while starting inventory release consumer", {"error": str(e)}, level="ERROR")
             time.sleep(5)

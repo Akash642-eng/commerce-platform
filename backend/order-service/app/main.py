@@ -8,6 +8,8 @@ from .payment_consumer import start_payment_consumer
 from .payment_failed_consumer import start_failed_consumer
 from .inventory_consumer import start_inventory_consumer
 
+from .logger import log_event
+
 app = FastAPI(title="Order Service")
 
 Base.metadata.create_all(bind=engine)
@@ -21,7 +23,7 @@ def root():
 
 
 def start_all_consumers():
-    print("Starting all order-service consumers...", flush=True)
+    log_event("order-service", "system", "Starting all order-service consumers...", {})
 
     threading.Thread(target=start_payment_consumer, daemon=True).start()
     threading.Thread(target=start_failed_consumer, daemon=True).start()
