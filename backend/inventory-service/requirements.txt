@@ -4,3 +4,4 @@ sqlalchemy
 psycopg2-binary
 python-dotenv
 pika==1.3.2
+prometheus-client

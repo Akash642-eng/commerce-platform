@@ -12,7 +12,6 @@ RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 
 MAX_RETRIES = 3
 
-
 def publish(queue, message, headers=None):
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(host=RABBITMQ_HOST)

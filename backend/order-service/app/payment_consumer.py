@@ -10,6 +10,8 @@ from .state_machine import can_transition
 from .logger import log_event
 from .config import settings
 
+from .metrics import EVENTS_PROCESSED, EVENTS_FAILED
+
 ENV = os.getenv("ENV", "dev")
 
 RABBITMQ_HOST = settings.RABBITMQ_HOST
@@ -47,12 +49,31 @@ def callback(ch, method, properties, body):
         retry_count = headers.get("x-retry", 0)
         trace_id = headers.get("x-trace-id", "unknown")
 
-        log_event("order-service", trace_id, f"Event received (retry={retry_count})", data)
+        log_event(
+            "order-service",
+            trace_id,
+            f"Event received (retry={retry_count})",
+            data
+        )
 
-        order = db.query(Order).filter(Order.id == data["order_id"]).first()
+        order = db.query(Order).filter(
+            Order.id == data["order_id"]
+        ).first()
 
         if not order:
-            log_event("order-service", trace_id, "Order not found", data, level="WARNING")
+            log_event(
+                "order-service",
+                trace_id,
+                "Order not found",
+                data,
+                level="WARNING"
+            )
+
+            EVENTS_FAILED.labels(
+                "order-service",
+                "order_not_found"
+            ).inc()
+
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
@@ -67,42 +88,78 @@ def callback(ch, method, properties, body):
                 {"event_id": event_id},
                 level="WARNING"
             )
+
+            EVENTS_FAILED.labels(
+                "order-service",
+                "duplicate_event"
+            ).inc()
+
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
         redis_client.set(event_id, "1", ex=3600)
 
+        # ---------------- RESERVED ----------------
 
         if status == "RESERVED":
+
             old_status = order.status
 
             if can_transition(order.status, "RESERVED"):
+
                 order.status = "RESERVED"
                 db.commit()
 
-                log_event("order-service", trace_id, "State transition", {
-                    "order_id": order.id,
-                    "from": old_status,
-                    "to": "RESERVED"
-                })
-            else:
-                raise Exception(f"Invalid transition {order.status} → RESERVED")
+                EVENTS_PROCESSED.labels(
+                    "order-service",
+                    "inventory_reserved"
+                ).inc()
 
-    
+                log_event(
+                    "order-service",
+                    trace_id,
+                    "State transition",
+                    {
+                        "order_id": order.id,
+                        "from": old_status,
+                        "to": "RESERVED"
+                    }
+                )
+
+            else:
+                raise Exception(
+                    f"Invalid transition {order.status} → RESERVED"
+                )
+
+        # ---------------- SUCCESS ----------------
+
         elif status == "SUCCESS":
+
             old_status = order.status
 
             if can_transition(order.status, "PAID"):
+
                 order.status = "PAID"
                 db.commit()
 
-                log_event("order-service", trace_id, "State transition", {
-                    "order_id": order.id,
-                    "from": old_status,
-                    "to": "PAID"
-                })
+                EVENTS_PROCESSED.labels(
+                    "order-service",
+                    "payment_completed"
+                ).inc()
+
+                log_event(
+                    "order-service",
+                    trace_id,
+                    "State transition",
+                    {
+                        "order_id": order.id,
+                        "from": old_status,
+                        "to": "PAID"
+                    }
+                )
 
             elif order.status == "CREATED":
+
                 log_event(
                     "order-service",
                     trace_id,
@@ -117,15 +174,31 @@ def callback(ch, method, properties, body):
                 order.status = "PAID"
                 db.commit()
 
-                log_event("order-service", trace_id, "Forced transition", {
-                    "order_id": order.id,
-                    "to": "PAID"
-                })
+                EVENTS_PROCESSED.labels(
+                    "order-service",
+                    "forced_paid_transition"
+                ).inc()
+
+                log_event(
+                    "order-service",
+                    trace_id,
+                    "Forced transition",
+                    {
+                        "order_id": order.id,
+                        "to": "PAID"
+                    }
+                )
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except Exception as e:
+
         err = str(e) if ENV == "dev" else "processing error"
+
+        EVENTS_FAILED.labels(
+            "order-service",
+            "payment_processing"
+        ).inc()
 
         log_event(
             "order-service",
@@ -139,9 +212,11 @@ def callback(ch, method, properties, body):
         retry_count = headers.get("x-retry", 0)
 
         if retry_count < MAX_RETRIES:
+
             new_headers = headers.copy()
+
             new_headers["x-retry"] = retry_count + 1
-            new_headers["x-trace-id"] = trace_id  # 🔥 FIX
+            new_headers["x-trace-id"] = trace_id
 
             log_event(
                 "order-service",
@@ -159,6 +234,12 @@ def callback(ch, method, properties, body):
             )
 
         else:
+
+            EVENTS_FAILED.labels(
+                "order-service",
+                "dlq_sent"
+            ).inc()
+
             log_event(
                 "order-service",
                 trace_id,
@@ -181,18 +262,32 @@ def callback(ch, method, properties, body):
 
 
 def start_payment_consumer():
-    log_event("order-service", "SYSTEM", f"Payment consumer started ({ENV})")
+
+    log_event(
+        "order-service",
+        "SYSTEM",
+        f"Payment consumer started ({ENV})"
+    )
 
     while True:
+
         try:
+
             connection = pika.BlockingConnection(
                 pika.ConnectionParameters(host=RABBITMQ_HOST)
             )
 
             channel = connection.channel()
 
-            channel.queue_declare(queue="payment_completed", durable=True)
-            channel.queue_declare(queue="payment_completed_dlq", durable=True)
+            channel.queue_declare(
+                queue="payment_completed",
+                durable=True
+            )
+
+            channel.queue_declare(
+                queue="payment_completed_dlq",
+                durable=True
+            )
 
             channel.basic_consume(
                 queue="payment_completed",
@@ -200,11 +295,16 @@ def start_payment_consumer():
                 auto_ack=False
             )
 
-            log_event("order-service", "SYSTEM", "Waiting for payment events")
+            log_event(
+                "order-service",
+                "SYSTEM",
+                "Waiting for payment events"
+            )
 
             channel.start_consuming()
 
         except Exception as e:
+
             log_event(
                 "order-service",
                 "SYSTEM",
@@ -212,22 +312,37 @@ def start_payment_consumer():
                 {"error": str(e)},
                 level="ERROR"
             )
+
             time.sleep(5)
 
 
 def start_inventory_consumer():
-    log_event("order-service", "SYSTEM", f"Inventory consumer started ({ENV})")
+
+    log_event(
+        "order-service",
+        "SYSTEM",
+        f"Inventory consumer started ({ENV})"
+    )
 
     while True:
+
         try:
+
             connection = pika.BlockingConnection(
                 pika.ConnectionParameters(host=RABBITMQ_HOST)
             )
 
             channel = connection.channel()
 
-            channel.queue_declare(queue="inventory_reserved", durable=True)
-            channel.queue_declare(queue="inventory_reserved_dlq", durable=True)
+            channel.queue_declare(
+                queue="inventory_reserved",
+                durable=True
+            )
+
+            channel.queue_declare(
+                queue="inventory_reserved_dlq",
+                durable=True
+            )
 
             channel.basic_consume(
                 queue="inventory_reserved",
@@ -235,11 +350,16 @@ def start_inventory_consumer():
                 auto_ack=False
             )
 
-            log_event("order-service", "SYSTEM", "Waiting for inventory_reserved events")
+            log_event(
+                "order-service",
+                "SYSTEM",
+                "Waiting for inventory_reserved events"
+            )
 
             channel.start_consuming()
 
         except Exception as e:
+
             log_event(
                 "order-service",
                 "SYSTEM",
@@ -247,4 +367,5 @@ def start_inventory_consumer():
                 {"error": str(e)},
                 level="ERROR"
             )
+
             time.sleep(5)

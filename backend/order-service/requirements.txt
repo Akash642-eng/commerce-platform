@@ -6,3 +6,4 @@ python-dotenv
 requests
 pika
 redis
+prometheus-client
