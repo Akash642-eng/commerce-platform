@@ -20,7 +20,10 @@ def get_connection():
                 )
             )
         except:
-            print("Retrying RabbitMQ connection...", flush=True)
+            #print("Retrying RabbitMQ connection...", flush=True)
+
+            log_event("inventory-service", "SYSTEM", "RabbitMQ connection failed, retrying...", {}, level="WARNING")
+
             time.sleep(5)
 
 
@@ -43,7 +46,9 @@ def publish_to_queue(queue_name, message, trace_id, headers=None):
         )
     )
 
-    print(f" Published → {queue_name}", flush=True)
+    #print(f" Published → {queue_name}", flush=True)
+
+    log_event("inventory-service", trace_id, f"Published to {queue_name}", message)
 
     connection.close()
 
