@@ -3,12 +3,9 @@ uvicorn
 httpx
 redis
 requests
-
 prometheus-client
-
 opentelemetry-api
 opentelemetry-sdk
 opentelemetry-exporter-jaeger-thrift
 opentelemetry-instrumentation-fastapi
-
 deprecated
