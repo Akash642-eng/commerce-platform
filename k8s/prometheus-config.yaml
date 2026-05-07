@@ -14,6 +14,46 @@ data:
         static_configs:
           - targets: ['api-gateway:8000']
 
+      - job_name: 'auth-service'
+        static_configs:
+          - targets: ['auth-service:8001']
+
+      - job_name: 'user-service'
+        static_configs:
+          - targets: ['user-service:8002']
+
+      - job_name: 'product-service'
+        static_configs:
+          - targets: ['product-service:8003']
+
+      - job_name: 'cart-service'
+        static_configs:
+          - targets: ['cart-service:8004']
+
+      - job_name: 'order-service'
+        static_configs:
+          - targets: ['order-service:8005']
+
+      - job_name: 'payment-service'
+        static_configs:
+          - targets: ['payment-service:8006']
+
+      - job_name: 'delivery-service'
+        static_configs:
+          - targets: ['delivery-service:8007']
+
+      - job_name: 'notification-service'
+        static_configs:
+          - targets: ['notification-service:8008']
+
+      - job_name: 'inventory-service'
+        static_configs:
+          - targets: ['inventory-service:8009']
+
+      - job_name: 'support-service'
+        static_configs:
+          - targets: ['support-service:8010']
+
       - job_name: 'kube-state-metrics'
         static_configs:
           - targets: ['kube-state-metrics.kube-system.svc.cluster.local:8080']
