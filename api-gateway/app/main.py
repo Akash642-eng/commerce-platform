@@ -6,41 +6,84 @@ import redis
 import os
 import uuid
 
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import (
+    Counter,
+    Histogram,
+    generate_latest,
+    CONTENT_TYPE_LATEST
+)
 
 from .config import SERVICES
+
+# =========================
+# OpenTelemetry
+# =========================
 
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.jaeger.thrift import JaegerExporter
 
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.requests import RequestsInstrumentor
-
-app = FastAPI(title="API Gateway", redirect_slashes=False)
-
-trace.set_tracer_provider(
-    TracerProvider(
-        resource=Resource.create(
-            {"service.name": "api-gateway"}
-        )
-    )
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+    OTLPSpanExporter
 )
 
-jaeger_exporter = JaegerExporter(
-    agent_host_name="jaeger.observability.svc.cluster.local",
-    agent_port=6831,
+from opentelemetry.instrumentation.fastapi import (
+    FastAPIInstrumentor
 )
 
-trace.get_tracer_provider().add_span_processor(
-    BatchSpanProcessor(jaeger_exporter)
+from opentelemetry.instrumentation.requests import (
+    RequestsInstrumentor
 )
+
+# =========================
+# APP
+# =========================
+
+app = FastAPI(
+    title="API Gateway",
+    redirect_slashes=False
+)
+
+# =========================
+# TRACING SETUP
+# =========================
+
+resource = Resource.create({
+    "service.name": "api-gateway"
+})
+
+provider = TracerProvider(resource=resource)
+
+trace.set_tracer_provider(provider)
+
+OTLP_ENDPOINT = os.getenv(
+    "OTEL_EXPORTER_OTLP_ENDPOINT",
+    "http://jaeger-collector:4317"
+)
+
+otlp_exporter = OTLPSpanExporter(
+    endpoint=OTLP_ENDPOINT,
+    insecure=True
+)
+
+span_processor = BatchSpanProcessor(
+    otlp_exporter
+)
+
+provider.add_span_processor(span_processor)
+
+# =========================
+# INSTRUMENTATION
+# =========================
 
 FastAPIInstrumentor.instrument_app(app)
+
 RequestsInstrumentor().instrument()
 
+# =========================
+# METRICS
+# =========================
 
 REQUEST_COUNT = Counter(
     "gateway_requests_total",
@@ -54,42 +97,91 @@ REQUEST_LATENCY = Histogram(
     ["endpoint"]
 )
 
-RESERVED_ROUTES = {"health", "docs", "openapi.json", "redoc", "metrics"}
+# =========================
+# CONSTANTS
+# =========================
 
-
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
-
-
-@app.get("/metrics")
-def metrics():
-    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
-
+RESERVED_ROUTES = {
+    "health",
+    "docs",
+    "openapi.json",
+    "redoc",
+    "metrics"
+}
 
 AUTH_SERVICE_URL = "http://auth-service:8000"
 
 ENV = os.getenv("ENV", "dev")
 
 REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+
+RATE_LIMIT = 5
+
+WINDOW_SIZE = 10
+
+# =========================
+# REDIS
+# =========================
+
 redis_client = redis.Redis(
     host=REDIS_HOST,
     port=6379,
     decode_responses=True
 )
 
-RATE_LIMIT = 5
-WINDOW_SIZE = 10
+# =========================
+# HEALTH
+# =========================
 
+@app.get("/health")
+async def health():
+    return {
+        "status": "ok"
+    }
+
+# =========================
+# METRICS ENDPOINT
+# =========================
+
+@app.get("/metrics")
+def metrics():
+    return Response(
+        generate_latest(),
+        media_type=CONTENT_TYPE_LATEST
+    )
+
+# =========================
+# ROOT
+# =========================
+
+@app.get("/")
+def root():
+    return {
+        "message": f"API Gateway Running ({ENV})"
+    }
+
+# =========================
+# AUTH
+# =========================
 
 async def verify_token(request: Request):
-    auth_header = request.headers.get("authorization")
+
+    auth_header = request.headers.get(
+        "authorization"
+    )
 
     if not auth_header:
-        raise HTTPException(status_code=401, detail="Missing token")
+        raise HTTPException(
+            status_code=401,
+            detail="Missing token"
+        )
 
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+
+        async with httpx.AsyncClient(
+            timeout=5.0
+        ) as client:
+
             response = await client.get(
                 f"{AUTH_SERVICE_URL}/auth/me",
                 headers={
@@ -98,11 +190,15 @@ async def verify_token(request: Request):
             )
 
         if response.status_code != 200:
-            raise HTTPException(status_code=401, detail="Invalid token")
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid token"
+            )
 
         return response.json()
 
     except Exception:
+
         if ENV == "dev":
             raise HTTPException(
                 status_code=401,
@@ -114,14 +210,22 @@ async def verify_token(request: Request):
             detail="Unauthorized"
         )
 
+# =========================
+# RATE LIMIT
+# =========================
 
 def check_rate_limit(client_id: str):
+
     key = f"rate_limit:{client_id}"
 
     current = redis_client.get(key)
 
     if current is None:
-        redis_client.set(key, 1, ex=WINDOW_SIZE)
+        redis_client.set(
+            key,
+            1,
+            ex=WINDOW_SIZE
+        )
         return
 
     if int(current) >= RATE_LIMIT:
@@ -132,26 +236,33 @@ def check_rate_limit(client_id: str):
 
     redis_client.incr(key)
 
+# =========================
+# CACHE
+# =========================
 
 def get_cache_key(service, path, query):
     return f"cache:{service}:{path}:{query}"
 
-
 def get_cached_response(key):
+
     cached = redis_client.get(key)
 
     return json.loads(cached) if cached else None
 
-
 def set_cache_response(key, data):
+
     redis_client.set(
         key,
         json.dumps(data),
         ex=15
     )
 
+# =========================
+# VALIDATION
+# =========================
 
 def validate_order_request(body):
+
     if not body:
         raise HTTPException(
             status_code=400,
@@ -164,7 +275,10 @@ def validate_order_request(body):
             detail="user_id required"
         )
 
-    if "items" not in body or not isinstance(body["items"], list):
+    if "items" not in body or not isinstance(
+        body["items"],
+        list
+    ):
         raise HTTPException(
             status_code=400,
             detail="items must be list"
@@ -176,21 +290,30 @@ def validate_order_request(body):
             detail="total_amount required"
         )
 
-
-@app.get("/")
-def root():
-    return {
-        "message": f"API Gateway Running ({ENV})"
-    }
-
+# =========================
+# GATEWAY
+# =========================
 
 @app.api_route(
     "/{service}/{path:path}",
-    methods=["GET", "POST", "PUT", "DELETE", "PATCH"]
+    methods=[
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "PATCH"
+    ]
 )
-async def gateway(service: str, path: str, request: Request):
+async def gateway(
+    service: str,
+    path: str,
+    request: Request
+):
 
-    if service in RESERVED_ROUTES or service.startswith("health"):
+    if (
+        service in RESERVED_ROUTES
+        or service.startswith("health")
+    ):
         raise HTTPException(
             status_code=404,
             detail="Not found"
@@ -202,7 +325,9 @@ async def gateway(service: str, path: str, request: Request):
             detail="Service not found"
         )
 
-    trace_id = request.headers.get("x-trace-id") or str(uuid.uuid4())
+    trace_id = request.headers.get(
+        "x-trace-id"
+    ) or str(uuid.uuid4())
 
     start_time = time.time()
 
@@ -210,40 +335,57 @@ async def gateway(service: str, path: str, request: Request):
 
     try:
 
-        # ---------- AUTH ----------
+        # =========================
+        # AUTH
+        # =========================
+
         if service != "auth":
+
             user = await verify_token(request)
 
             client_id = user["user"]["user_id"]
 
             check_rate_limit(client_id)
 
-        # ---------- URL BUILD ----------
-        service_url = SERVICES[service].rstrip("/")
+        # =========================
+        # URL BUILD
+        # =========================
+
+        service_url = SERVICES[
+            service
+        ].rstrip("/")
 
         target_path = "/" + path.lstrip("/")
 
-        # FIXED TRAILING SLASH ISSUE
         if not target_path.endswith("/"):
             target_path += "/"
 
         url = f"{service_url}{target_path}"
 
-        # ---------- HEADERS ----------
+        # =========================
+        # HEADERS
+        # =========================
+
         headers = dict(request.headers)
 
         headers.pop("host", None)
 
         headers["x-trace-id"] = trace_id
 
-        # ---------- BODY ----------
+        # =========================
+        # BODY
+        # =========================
+
         raw_body = await request.body()
 
         parsed_body = None
 
         if raw_body:
+
             try:
-                parsed_body = json.loads(raw_body)
+                parsed_body = json.loads(
+                    raw_body
+                )
 
             except Exception:
                 raise HTTPException(
@@ -251,11 +393,22 @@ async def gateway(service: str, path: str, request: Request):
                     detail="Invalid JSON"
                 )
 
-        # ---------- VALIDATION ----------
-        if service == "orders" and request.method == "POST":
-            validate_order_request(parsed_body)
+        # =========================
+        # VALIDATION
+        # =========================
 
-        # ---------- CACHE ----------
+        if (
+            service == "orders"
+            and request.method == "POST"
+        ):
+            validate_order_request(
+                parsed_body
+            )
+
+        # =========================
+        # CACHE
+        # =========================
+
         cache_key = get_cache_key(
             service,
             path,
@@ -263,9 +416,13 @@ async def gateway(service: str, path: str, request: Request):
         )
 
         if request.method == "GET":
-            cached = get_cached_response(cache_key)
+
+            cached = get_cached_response(
+                cache_key
+            )
 
             if cached:
+
                 REQUEST_COUNT.labels(
                     request.method,
                     endpoint,
@@ -274,11 +431,24 @@ async def gateway(service: str, path: str, request: Request):
 
                 return cached
 
-        # ---------- TIMEOUT ----------
-        timeout = 10.0 if ENV == "dev" else 5.0
+        # =========================
+        # TIMEOUT
+        # =========================
 
-        # ---------- FORWARD REQUEST ----------
-        async with httpx.AsyncClient(timeout=timeout) as client:
+        timeout = (
+            10.0
+            if ENV == "dev"
+            else 5.0
+        )
+
+        # =========================
+        # FORWARD REQUEST
+        # =========================
+
+        async with httpx.AsyncClient(
+            timeout=timeout
+        ) as client:
+
             response = await client.request(
                 method=request.method,
                 url=url,
@@ -287,7 +457,10 @@ async def gateway(service: str, path: str, request: Request):
                 content=raw_body if raw_body else None
             )
 
-        # ---------- SAFE JSON PARSE ----------
+        # =========================
+        # RESPONSE PARSE
+        # =========================
+
         try:
             response_data = response.json()
 
@@ -296,22 +469,36 @@ async def gateway(service: str, path: str, request: Request):
                 "message": response.text
             }
 
-        # ---------- CACHE SAVE ----------
+        # =========================
+        # CACHE SAVE
+        # =========================
+
         if request.method == "GET":
-            set_cache_response(cache_key, response_data)
+            set_cache_response(
+                cache_key,
+                response_data
+            )
 
         duration = time.time() - start_time
 
-        # ---------- METRICS ----------
+        # =========================
+        # METRICS
+        # =========================
+
         REQUEST_COUNT.labels(
             request.method,
             endpoint,
             str(response.status_code)
         ).inc()
 
-        REQUEST_LATENCY.labels(endpoint).observe(duration)
+        REQUEST_LATENCY.labels(
+            endpoint
+        ).observe(duration)
 
-        # ---------- FINAL RESPONSE ----------
+        # =========================
+        # FINAL RESPONSE
+        # =========================
+
         return Response(
             content=json.dumps(response_data),
             status_code=response.status_code,
@@ -330,6 +517,7 @@ async def gateway(service: str, path: str, request: Request):
         ).inc()
 
         if ENV == "dev":
+
             raise HTTPException(
                 status_code=503,
                 detail=str(e)
