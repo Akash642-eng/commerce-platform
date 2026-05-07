@@ -4,7 +4,7 @@ import threading
 from .rabbitmq_consumer import start_consumer
 from .dlq_consumer import start_dlq_consumer
 
-from logger import log_event
+from .logger import log_event       
 
 app = FastAPI()
 

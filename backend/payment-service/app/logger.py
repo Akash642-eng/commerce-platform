@@ -1,11 +1,13 @@
+import logging
 import json
-import datetime
+from datetime import datetime
 
-from .logger import log_event
+logging.basicConfig(level=logging.INFO)
 
-def log_event(service: str, trace_id: str, message: str, data: dict = None, level="INFO"):
+
+def log_event(service, trace_id, message, data=None, level="INFO"):
     log = {
-        "timestamp": datetime.datetime.utcnow().isoformat(),
+        "timestamp": datetime.utcnow().isoformat(),
         "service": service,
         "level": level,
         "trace_id": trace_id,
@@ -13,4 +15,4 @@ def log_event(service: str, trace_id: str, message: str, data: dict = None, leve
         "data": data or {}
     }
 
-    print(json.dumps(log), flush=True)
+    print(json.dumps(log))
