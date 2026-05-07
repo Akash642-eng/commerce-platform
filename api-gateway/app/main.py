@@ -59,7 +59,7 @@ trace.set_tracer_provider(provider)
 
 OTLP_ENDPOINT = os.getenv(
     "OTEL_EXPORTER_OTLP_ENDPOINT",
-    "http://jaeger-collector:4317"
+    "http://jaeger-collector.observability.svc.cluster.local:4317"
 )
 
 otlp_exporter = OTLPSpanExporter(
