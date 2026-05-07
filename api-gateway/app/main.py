@@ -10,7 +10,37 @@ from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_
 
 from .config import SERVICES
 
+from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
+
 app = FastAPI(title="API Gateway", redirect_slashes=False)
+
+trace.set_tracer_provider(
+    TracerProvider(
+        resource=Resource.create(
+            {"service.name": "api-gateway"}
+        )
+    )
+)
+
+jaeger_exporter = JaegerExporter(
+    agent_host_name="jaeger.observability.svc.cluster.local",
+    agent_port=6831,
+)
+
+trace.get_tracer_provider().add_span_processor(
+    BatchSpanProcessor(jaeger_exporter)
+)
+
+FastAPIInstrumentor.instrument_app(app)
+RequestsInstrumentor().instrument()
+
 
 REQUEST_COUNT = Counter(
     "gateway_requests_total",
