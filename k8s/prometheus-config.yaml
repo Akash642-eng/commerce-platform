@@ -16,43 +16,43 @@ data:
 
       - job_name: 'auth-service'
         static_configs:
-          - targets: ['auth-service:8001']
+          - targets: ['auth-service:8000']
 
       - job_name: 'user-service'
         static_configs:
-          - targets: ['user-service:8002']
+          - targets: ['user-service:8000']
 
       - job_name: 'product-service'
         static_configs:
-          - targets: ['product-service:8003']
+          - targets: ['product-service:8000']
 
       - job_name: 'cart-service'
         static_configs:
-          - targets: ['cart-service:8004']
+          - targets: ['cart-service:8000']
 
       - job_name: 'order-service'
         static_configs:
-          - targets: ['order-service:8005']
+          - targets: ['order-service:8000']
 
       - job_name: 'payment-service'
         static_configs:
-          - targets: ['payment-service:8006']
+          - targets: ['payment-service:8000']
 
       - job_name: 'delivery-service'
         static_configs:
-          - targets: ['delivery-service:8007']
+          - targets: ['delivery-service:8000']
 
       - job_name: 'notification-service'
         static_configs:
-          - targets: ['notification-service:8008']
+          - targets: ['notification-service:8000']
 
       - job_name: 'inventory-service'
         static_configs:
-          - targets: ['inventory-service:8009']
+          - targets: ['inventory-service:8000']
 
       - job_name: 'support-service'
         static_configs:
-          - targets: ['support-service:8010']
+          - targets: ['support-service:8000']
 
       - job_name: 'kube-state-metrics'
         static_configs:

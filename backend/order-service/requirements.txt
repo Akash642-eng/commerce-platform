@@ -7,3 +7,4 @@ requests
 pika
 redis
 prometheus-client
+prometheus-fastapi-instrumentator

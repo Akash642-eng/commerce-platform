@@ -1,8 +1,14 @@
 from fastapi import FastAPI
+
+from prometheus_fastapi_instrumentator import Instrumentator
+
+
 from .database import engine, Base
 from .routes import products, categories
 
 app = FastAPI(title="Product Service")
+
+Instrumentator().instrument(app).expose(app)
 
 Base.metadata.create_all(bind=engine)
 

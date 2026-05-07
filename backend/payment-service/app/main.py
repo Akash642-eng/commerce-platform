@@ -1,4 +1,7 @@
 from fastapi import FastAPI
+
+from prometheus_fastapi_instrumentator import Instrumentator
+
 import threading
 
 from .rabbitmq_consumer import start_consumer
@@ -7,6 +10,8 @@ from .dlq_consumer import start_dlq_consumer
 from .logger import log_event       
 
 app = FastAPI()
+
+Instrumentator().instrument(app).expose(app)
 
 
 def start_background_consumers():

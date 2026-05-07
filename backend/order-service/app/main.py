@@ -1,4 +1,7 @@
 from fastapi import FastAPI
+
+from prometheus_fastapi_instrumentator import Instrumentator
+
 from .database import engine, Base
 from .routes import orders
 
@@ -11,6 +14,8 @@ from .inventory_consumer import start_inventory_consumer
 from .logger import log_event
 
 app = FastAPI(redirect_slashes= False)
+
+Instrumentator().instrument(app).expose(app)
 
 Base.metadata.create_all(bind=engine)
 
