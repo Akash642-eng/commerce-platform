@@ -10,4 +10,3 @@ python-jose
 
 passlib
 passlib[bcrypt]
-pytest
