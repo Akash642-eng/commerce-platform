@@ -6,6 +6,8 @@ import redis
 import os
 import uuid
 
+from shared.tracing import setup_tracing
+
 from prometheus_client import (
     Counter,
     Histogram,
@@ -16,27 +18,6 @@ from prometheus_client import (
 from .config import SERVICES
 
 # =========================
-# OpenTelemetry
-# =========================
-
-from opentelemetry import trace
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-    OTLPSpanExporter
-)
-
-from opentelemetry.instrumentation.fastapi import (
-    FastAPIInstrumentor
-)
-
-from opentelemetry.instrumentation.requests import (
-    RequestsInstrumentor
-)
-
-# =========================
 # APP
 # =========================
 
@@ -45,41 +26,7 @@ app = FastAPI(
     redirect_slashes=False
 )
 
-# =========================
-# TRACING SETUP
-# =========================
-
-resource = Resource.create({
-    "service.name": "api-gateway"
-})
-
-provider = TracerProvider(resource=resource)
-
-trace.set_tracer_provider(provider)
-
-OTLP_ENDPOINT = os.getenv(
-    "OTEL_EXPORTER_OTLP_ENDPOINT",
-    "http://jaeger-collector.observability.svc.cluster.local:4317"
-)
-
-otlp_exporter = OTLPSpanExporter(
-    endpoint=OTLP_ENDPOINT,
-    insecure=True
-)
-
-span_processor = BatchSpanProcessor(
-    otlp_exporter
-)
-
-provider.add_span_processor(span_processor)
-
-# =========================
-# INSTRUMENTATION
-# =========================
-
-FastAPIInstrumentor.instrument_app(app)
-
-RequestsInstrumentor().instrument()
+setup_tracing(app, "api-gateway")
 
 # =========================
 # METRICS

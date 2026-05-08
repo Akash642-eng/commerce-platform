@@ -1,18 +1,18 @@
-from pydantic import BaseModel
-from uuid import UUID
+from pydantic import BaseModel, EmailStr
 
 
 class UserCreate(BaseModel):
+
     name: str
-    email: str
-    phone: str
+    email: EmailStr
+    password: str
 
 
-class AddressCreate(BaseModel):
-    user_id: UUID
-    address_line1: str
-    address_line2: str
-    city: str
-    state: str
-    postal_code: str
-    country: str
+class UserResponse(BaseModel):
+
+    id: int
+    name: str
+    email: EmailStr
+    class Config:
+
+        from_attributes = True
