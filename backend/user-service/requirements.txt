@@ -6,7 +6,6 @@ python-dotenv
 prometheus-fastapi-instrumentator
 email-validator
 cryptography
-python-jose 
-
+python-jose
 passlib
 passlib[bcrypt]
