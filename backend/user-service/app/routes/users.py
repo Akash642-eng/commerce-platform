@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app import models, schemas
 
+
 router = APIRouter(
     prefix="/users",
     tags=["Users"]
@@ -40,7 +41,7 @@ def create_user(
 
         raise HTTPException(
             status_code=400,
-            detail="Email already registered"
+            detail="Email already exists"
         )
 
     new_user = models.User(
@@ -66,6 +67,95 @@ def get_users(
     db: Session = Depends(get_db)
 ):
 
-    return db.query(
+    users = db.query(
         models.User
     ).all()
+
+    return users
+
+
+@router.get(
+    "/{user_id}",
+    response_model=schemas.UserResponse
+)
+def get_user(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+
+    user = db.query(
+        models.User
+    ).filter(
+        models.User.id == user_id
+    ).first()
+
+    if not user:
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    return user
+
+
+@router.put(
+    "/{user_id}",
+    response_model=schemas.UserResponse
+)
+def update_user(
+    user_id: int,
+    updated_user: schemas.UserCreate,
+    db: Session = Depends(get_db)
+):
+
+    user = db.query(
+        models.User
+    ).filter(
+        models.User.id == user_id
+    ).first()
+
+    if not user:
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    user.name = updated_user.name
+    user.email = updated_user.email
+    user.password = updated_user.password
+
+    db.commit()
+
+    db.refresh(user)
+
+    return user
+
+
+@router.delete("/{user_id}")
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+
+    user = db.query(
+        models.User
+    ).filter(
+        models.User.id == user_id
+    ).first()
+
+    if not user:
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    db.delete(user)
+
+    db.commit()
+
+    return {
+        "message": "User deleted successfully"
+    }
