@@ -8,6 +8,13 @@ class UserCreate(BaseModel):
     password: str
 
 
+class UserUpdate(BaseModel):
+
+    name: str
+    email: EmailStr
+    password: str
+
+
 class UserResponse(BaseModel):
 
     id: int
