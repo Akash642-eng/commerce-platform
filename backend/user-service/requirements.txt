@@ -10,6 +10,3 @@ python-jose
 
 passlib
 passlib[bcrypt]
-
-newsapi-python
-redis
