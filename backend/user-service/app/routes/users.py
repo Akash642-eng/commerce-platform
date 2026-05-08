@@ -8,6 +8,8 @@ from app.database import get_db
 from app import models
 from app import schemas
 
+from app.security import hash_password
+
 
 router = APIRouter(
     prefix="/users",
@@ -40,7 +42,7 @@ def create_user(
     new_user = models.User(
         name=user.name,
         email=user.email,
-        password=user.password
+        password=hash_password(user.password)
     )
 
     db.add(new_user)
@@ -117,7 +119,9 @@ def update_user(
 
     user.name = updated_user.name
     user.email = updated_user.email
-    user.password = updated_user.password
+    user.password = hash_password(
+        updated_user.password
+    )
 
     db.commit()
 
