@@ -89,6 +89,20 @@ def get_users(
 
     return users
 
+#----------------------
+# GET MY PROFILE
+#----------------------
+
+@router.get(
+    "/me",
+    response_model=schemas.UserResponse
+)
+def get_my_profile(
+    current_user: models.User = Depends(
+        get_current_user
+    )
+):
+    return current_user
 
 # --------------------------------
 # GET USER BY ID
@@ -253,14 +267,3 @@ def delete_user(
         "message": "User deleted successfully"
     }
 
-
-@router.get(
-    "/me",
-    response_model=schemas.UserResponse
-)
-def get_my_profile(
-    current_user: models.User = Depends(
-        get_current_user
-    )
-):
-    return current_user
