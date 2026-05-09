@@ -1,13 +1,23 @@
+from dotenv import load_dotenv
+
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from .database import Base, engine
+from .database import Base
+from .database import engine
+
 from .logger import logger
 
 from .routes import users
 from .routes import auth
+
+
+# --------------------------------
+# LOAD ENV VARIABLES
+# --------------------------------
+load_dotenv()
 
 
 app = FastAPI(
@@ -16,43 +26,47 @@ app = FastAPI(
 )
 
 
-# -----------------------------
+# --------------------------------
 # DATABASE
-# -----------------------------
+# --------------------------------
 Base.metadata.create_all(bind=engine)
 
 
-# -----------------------------
+# --------------------------------
 # METRICS
-# -----------------------------
+# --------------------------------
 Instrumentator().instrument(app).expose(app)
 
 
-# -----------------------------
+# --------------------------------
 # ROUTES
-# -----------------------------
+# --------------------------------
 app.include_router(auth.router)
 app.include_router(users.router)
 
 
-# -----------------------------
+# --------------------------------
 # STARTUP EVENTS
-# -----------------------------
+# --------------------------------
 @app.on_event("startup")
 def startup_event():
 
-    logger.info("User Service started successfully")
+    logger.info(
+        "User Service started successfully"
+    )
 
 
 @app.on_event("shutdown")
 def shutdown_event():
 
-    logger.info("User Service shutting down")
+    logger.info(
+        "User Service shutting down"
+    )
 
 
-# -----------------------------
+# --------------------------------
 # ROOT
-# -----------------------------
+# --------------------------------
 @app.get("/")
 def root():
 
@@ -63,9 +77,9 @@ def root():
     }
 
 
-# -----------------------------
+# --------------------------------
 # HEALTH CHECK
-# -----------------------------
+# --------------------------------
 @app.get("/health")
 def health_check():
 
@@ -77,9 +91,9 @@ def health_check():
     )
 
 
-# -----------------------------
+# --------------------------------
 # LIVENESS PROBE
-# -----------------------------
+# --------------------------------
 @app.get("/live")
 def liveness_probe():
 
@@ -91,15 +105,16 @@ def liveness_probe():
     )
 
 
-# -----------------------------
+# --------------------------------
 # READINESS PROBE
-# -----------------------------
+# --------------------------------
 @app.get("/ready")
 def readiness_probe():
 
     try:
 
         connection = engine.connect()
+
         connection.close()
 
         return JSONResponse(
@@ -112,7 +127,9 @@ def readiness_probe():
 
     except Exception as e:
 
-        logger.error(f"Readiness probe failed: {str(e)}")
+        logger.error(
+            f"Readiness probe failed: {str(e)}"
+        )
 
         return JSONResponse(
             status_code=503,

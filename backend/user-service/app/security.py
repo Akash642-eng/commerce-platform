@@ -1,60 +1,53 @@
 import os
 
+from jose import jwt
+from jose import JWTError
+
 from datetime import datetime
 from datetime import timedelta
-from datetime import timezone
-
-from jose import JWTError
-from jose import jwt
-
-from passlib.context import CryptContext
 
 from fastapi import Depends
 from fastapi import HTTPException
-from fastapi import status
-
 from fastapi.security import OAuth2PasswordBearer
 
 from sqlalchemy.orm import Session
 
-from .database import get_db
+from passlib.context import CryptContext
 
-from . import models
+from app.database import get_db
+
+from app import models
 
 
-# --------------------------------
-# PASSWORD HASHING
-# --------------------------------
 pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto"
 )
 
 
-# --------------------------------
-# JWT CONFIG
-# --------------------------------
-SECRET_KEY = os.getenv(
-    "SECRET_KEY",
-    "change-this-in-production"
-)
-
-ALGORITHM = "HS256"
-
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
-
-
-# --------------------------------
-# OAUTH2 SCHEME
-# --------------------------------
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/auth/login"
 )
 
 
-# --------------------------------
-# HASH PASSWORD
-# --------------------------------
+SECRET_KEY = os.getenv(
+    "SECRET_KEY",
+    "supersecretkey"
+)
+
+ALGORITHM = os.getenv(
+    "ALGORITHM",
+    "HS256"
+)
+
+ACCESS_TOKEN_EXPIRE_MINUTES = int(
+    os.getenv(
+        "ACCESS_TOKEN_EXPIRE_MINUTES",
+        60
+    )
+)
+
+
 def hash_password(
     password: str
 ):
@@ -62,9 +55,6 @@ def hash_password(
     return pwd_context.hash(password)
 
 
-# --------------------------------
-# VERIFY PASSWORD
-# --------------------------------
 def verify_password(
     plain_password: str,
     hashed_password: str
@@ -76,18 +66,13 @@ def verify_password(
     )
 
 
-# --------------------------------
-# CREATE JWT TOKEN
-# --------------------------------
 def create_access_token(
     data: dict
 ):
 
     to_encode = data.copy()
 
-    expire = datetime.now(
-        timezone.utc
-    ) + timedelta(
+    expire = datetime.utcnow() + timedelta(
         minutes=ACCESS_TOKEN_EXPIRE_MINUTES
     )
 
@@ -106,10 +91,7 @@ def create_access_token(
     return encoded_jwt
 
 
-# --------------------------------
-# VERIFY JWT TOKEN
-# --------------------------------
-def verify_access_token(
+def verify_token(
     token: str
 ):
 
@@ -121,45 +103,45 @@ def verify_access_token(
             algorithms=[ALGORITHM]
         )
 
-        email = payload.get("sub")
+        user_id = payload.get(
+            "user_id"
+        )
 
-        if email is None:
+        if user_id is None:
 
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token"
-            )
+            return None
 
-        return email
+        return user_id
 
     except JWTError:
 
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token verification failed"
-        )
+        return None
 
 
-# --------------------------------
-# GET CURRENT USER
-# --------------------------------
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
 
-    email = verify_access_token(token)
+    user_id = verify_token(token)
+
+    if not user_id:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token"
+        )
 
     user = db.query(
         models.User
     ).filter(
-        models.User.email == email
+        models.User.id == user_id
     ).first()
 
     if not user:
 
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=401,
             detail="User not found"
         )
 
