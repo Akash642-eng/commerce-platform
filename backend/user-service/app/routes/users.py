@@ -13,6 +13,7 @@ from app import schemas
 from app.security import get_current_user
 from app.security import hash_password
 
+from app.security import get_current_user
 
 router = APIRouter(
     prefix="/users",
@@ -251,3 +252,15 @@ def delete_user(
     return {
         "message": "User deleted successfully"
     }
+
+
+@router.get(
+    "/me",
+    response_model=schemas.UserResponse
+)
+def get_my_profile(
+    current_user: models.User = Depends(
+        get_current_user
+    )
+):
+    return current_user
