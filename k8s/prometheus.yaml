@@ -24,24 +24,32 @@ spec:
 
           args:
             - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
 
           ports:
             - containerPort: 9090
 
           resources:
             requests:
-              memory: "128Mi"
-              cpu: "100m"
+              memory: "256Mi"
+              cpu: "150m"
 
             limits:
-              memory: "256Mi"
-              cpu: "300m"
+              memory: "512Mi"
+              cpu: "400m"
 
           volumeMounts:
             - name: config
               mountPath: /etc/prometheus
 
+            - name: prometheus-storage
+              mountPath: /prometheus
+
       volumes:
         - name: config
           configMap:
             name: prometheus-config
+
+        - name: prometheus-storage
+          persistentVolumeClaim:
+            claimName: prometheus-pvc

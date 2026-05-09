@@ -1,19 +1,25 @@
 apiVersion: apps/v1
 kind: Deployment
+
 metadata:
   name: postgres
+
 spec:
   replicas: 1
+
   selector:
     matchLabels:
       app: postgres
+
   template:
     metadata:
       labels:
         app: postgres
+
     spec:
       containers:
         - name: postgres
+
           image: postgres:15
 
           ports:
@@ -22,8 +28,10 @@ spec:
           env:
             - name: POSTGRES_USER
               value: commerce
+
             - name: POSTGRES_PASSWORD
               value: commerce
+
             - name: POSTGRES_DB
               value: commerce_db
 
@@ -31,6 +39,7 @@ spec:
             requests:
               memory: "256Mi"
               cpu: "250m"
+
             limits:
               memory: "512Mi"
               cpu: "500m"
@@ -41,18 +50,23 @@ spec:
 
       volumes:
         - name: postgres-storage
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: postgres-pvc
 
 ---
 
 apiVersion: v1
 kind: Service
+
 metadata:
   name: postgres
+
 spec:
   selector:
     app: postgres
+
   ports:
-      - port: 5432
-        targetPort: 5432
+    - port: 5432
+      targetPort: 5432
+
   type: ClusterIP
