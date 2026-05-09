@@ -1,10 +1,37 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import List
+from datetime import datetime
 
-class CartCreate(BaseModel):
-    user_id: str
 
-
+# -----------------------------
+# CART ITEM
+# -----------------------------
 class CartItemCreate(BaseModel):
-    cart_id: int
+    product_id: int
+    quantity: int = Field(gt=0)
+
+
+class CartItemResponse(BaseModel):
+    id: int
     product_id: int
     quantity: int
+
+    class Config:
+        from_attributes = True
+
+
+# -----------------------------
+# CART
+# -----------------------------
+class CartCreate(BaseModel):
+    user_id: int
+
+
+class CartResponse(BaseModel):
+    id: int
+    user_id: int
+    created_at: datetime
+    items: List[CartItemResponse] = []
+
+    class Config:
+        from_attributes = True
