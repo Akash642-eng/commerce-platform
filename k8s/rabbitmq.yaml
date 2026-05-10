@@ -1,5 +1,6 @@
 apiVersion: apps/v1
 kind: Deployment
+
 metadata:
   name: rabbitmq
 
@@ -18,6 +19,7 @@ spec:
     spec:
       containers:
         - name: rabbitmq
+
           image: rabbitmq:3-management
 
           ports:
@@ -27,16 +29,27 @@ spec:
 
           resources:
             requests:
-              cpu: "200m"
+              cpu: "150m"
               memory: "256Mi"
 
             limits:
-              cpu: "500m"
-              memory: "512Mi"
+              cpu: "400m"
+              memory: "768Mi"
+
+          volumeMounts:
+            - name: rabbitmq-storage
+              mountPath: /var/lib/rabbitmq
+
+      volumes:
+        - name: rabbitmq-storage
+          persistentVolumeClaim:
+            claimName: rabbitmq-pvc
 
 ---
+
 apiVersion: v1
 kind: Service
+
 metadata:
   name: rabbitmq
 
