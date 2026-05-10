@@ -28,18 +28,18 @@ spec:
           ports:
             - containerPort: 3000
 
-          volumeMounts:
-            - name: grafana-storage
-              mountPath: /var/lib/grafana
-
           resources:
             requests:
               cpu: "100m"
               memory: "256Mi"
 
             limits:
-              cpu: "250m"
-              memory: "512Mi"
+              cpu: "300m"
+              memory: "768Mi"
+
+          volumeMounts:
+            - name: grafana-storage
+              mountPath: /var/lib/grafana
 
       volumes:
         - name: grafana-storage
@@ -55,6 +55,8 @@ metadata:
   name: grafana
 
 spec:
+  type: NodePort
+
   selector:
     app: grafana
 
@@ -62,5 +64,3 @@ spec:
     - port: 3000
       targetPort: 3000
       nodePort: 30402
-
-  type: NodePort
