@@ -31,12 +31,12 @@ spec:
 
           resources:
             requests:
-              memory: "256Mi"
               cpu: "150m"
+              memory: "256Mi"
 
             limits:
-              memory: "512Mi"
               cpu: "400m"
+              memory: "768Mi"
 
           volumeMounts:
             - name: config
