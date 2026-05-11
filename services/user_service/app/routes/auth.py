@@ -8,12 +8,11 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from .. import models
+from .. import schemas
 
-from app import models
-from app import schemas
-
-from app.security import create_access_token
-from app.security import verify_password
+from ..security import create_access_token
+from ..security import verify_password
 
 
 router = APIRouter(
@@ -22,9 +21,6 @@ router = APIRouter(
 )
 
 
-# --------------------------------
-# LOGIN
-# --------------------------------
 @router.post(
     "/login",
     response_model=schemas.TokenResponse
@@ -34,19 +30,12 @@ def login(
     db: Session = Depends(get_db)
 ):
 
-    # --------------------------------
-    # FIND USER
-    # --------------------------------
     user = db.query(
         models.User
     ).filter(
         models.User.email == form_data.username
     ).first()
 
-
-    # --------------------------------
-    # USER NOT FOUND
-    # --------------------------------
     if not user:
 
         raise HTTPException(
@@ -54,10 +43,6 @@ def login(
             detail="Invalid email or password"
         )
 
-
-    # --------------------------------
-    # PASSWORD VALIDATION
-    # --------------------------------
     valid_password = verify_password(
         form_data.password,
         user.hashed_password
@@ -70,10 +55,6 @@ def login(
             detail="Invalid email or password"
         )
 
-
-    # --------------------------------
-    # CREATE JWT TOKEN
-    # --------------------------------
     access_token = create_access_token(
         data={
             "sub": user.email,
@@ -81,10 +62,6 @@ def login(
         }
     )
 
-
-    # --------------------------------
-    # RESPONSE
-    # --------------------------------
     return {
         "access_token": access_token,
         "token_type": "bearer"

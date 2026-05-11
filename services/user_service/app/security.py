@@ -14,9 +14,8 @@ from sqlalchemy.orm import Session
 
 from passlib.context import CryptContext
 
-from app.database import get_db
-
-from app import models
+from .database import get_db
+from . import models
 
 
 pwd_context = CryptContext(
