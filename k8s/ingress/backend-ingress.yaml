@@ -2,14 +2,14 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 
 metadata:
-  name: support-ingress
-  namespace: default
+  name: backend-ingress
+  namespace: backend
 
 spec:
   ingressClassName: nginx
 
   rules:
-    - host: support.local
+    - host: api.local
       http:
         paths:
           - path: /
@@ -17,6 +17,6 @@ spec:
 
             backend:
               service:
-                name: support-service
+                name: api-gateway
                 port:
                   number: 8000

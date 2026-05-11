@@ -2,14 +2,14 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 
 metadata:
-  name: support-ingress
-  namespace: default
+  name: prometheus-ingress
+  namespace: monitoring
 
 spec:
   ingressClassName: nginx
 
   rules:
-    - host: support.local
+    - host: prometheus.local
       http:
         paths:
           - path: /
@@ -17,6 +17,6 @@ spec:
 
             backend:
               service:
-                name: support-service
+                name: prometheus
                 port:
-                  number: 8000
+                  number: 9090

@@ -13,53 +13,66 @@ data:
     scrape_configs:
 
       - job_name: 'api-gateway'
+        metrics_path: /metrics
         static_configs:
           - targets: ['api-gateway.backend.svc.cluster.local:8000']
 
       - job_name: 'auth-service'
+        metrics_path: /metrics
         static_configs:
-          - targets: ['auth-service.backend.svc.cluster.local:8000']
+          - targets: ['auth-service.default.svc.cluster.local:8000']
 
       - job_name: 'user-service'
+        metrics_path: /metrics
         static_configs:
-          - targets: ['user-service.backend.svc.cluster.local:8000']
+          - targets: ['user-service.default.svc.cluster.local:8000']
 
       - job_name: 'product-service'
+        metrics_path: /metrics
         static_configs:
-          - targets: ['product-service.backend.svc.cluster.local:8000']
+          - targets: ['product-service.default.svc.cluster.local:8000']
 
       - job_name: 'cart-service'
+        metrics_path: /metrics
         static_configs:
-          - targets: ['cart-service.backend.svc.cluster.local:8000']
+          - targets: ['cart-service.default.svc.cluster.local:8000']
 
       - job_name: 'order-service'
+        metrics_path: /metrics
         static_configs:
-          - targets: ['order-service.backend.svc.cluster.local:8000']
+          - targets: ['order-service.default.svc.cluster.local:8000']
 
       - job_name: 'payment-service'
+        metrics_path: /metrics
         static_configs:
-          - targets: ['payment-service.backend.svc.cluster.local:8000']
+          - targets: ['payment-service.default.svc.cluster.local:8000']
 
       - job_name: 'delivery-service'
+        metrics_path: /metrics
         static_configs:
-          - targets: ['delivery-service.backend.svc.cluster.local:8000']
+          - targets: ['delivery-service.default.svc.cluster.local:8000']
 
       - job_name: 'notification-service'
+        metrics_path: /metrics
         static_configs:
-          - targets: ['notification-service.backend.svc.cluster.local:8000']
+          - targets: ['notification-service.default.svc.cluster.local:8000']
 
       - job_name: 'inventory-service'
+        metrics_path: /metrics
         static_configs:
-          - targets: ['inventory-service.backend.svc.cluster.local:8000']
+          - targets: ['inventory-service.default.svc.cluster.local:8000']
 
       - job_name: 'support-service'
+        metrics_path: /metrics
         static_configs:
-          - targets: ['support-service.backend.svc.cluster.local:8000']
+          - targets: ['support-service.default.svc.cluster.local:8000']
 
       - job_name: 'rabbitmq'
+        metrics_path: /metrics
         static_configs:
           - targets: ['rabbitmq.messaging.svc.cluster.local:15692']
 
       - job_name: 'prometheus'
+        metrics_path: /metrics
         static_configs:
           - targets: ['prometheus.monitoring.svc.cluster.local:9090']
