@@ -1,24 +1,12 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
-
 metadata:
   name: commerce-ingress
-
+  namespace: default
 spec:
   ingressClassName: nginx
 
-  rules:
-    - host: grafana.local
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: grafana
-                port:
-                  number: 3000
-
+  rules:    
     - host: prometheus.local
       http:
         paths:
