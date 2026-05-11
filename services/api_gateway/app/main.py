@@ -6,7 +6,7 @@ import redis
 import os
 import uuid
 
-from shared.tracing import setup_tracing
+from shared.tracing.tracing import setup_tracing
 
 from prometheus_client import (
     Counter,
