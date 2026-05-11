@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: rabbitmq
+  namespace: messaging
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: rabbitmq
+
+  strategy:
+    type: Recreate
+
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+
+    spec:
+      containers:
+        - name: rabbitmq
+
+          image: rabbitmq:3-management
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 5672
+            - containerPort: 15672
+            - containerPort: 15692
+
+          resources:
+            requests:
+              cpu: "150m"
+              memory: "256Mi"
+
+            limits:
+              cpu: "400m"
+              memory: "768Mi"
+
+          livenessProbe:
+            tcpSocket:
+              port: 5672
+            initialDelaySeconds: 20
+            periodSeconds: 10
+
+          readinessProbe:
+            tcpSocket:
+              port: 5672
+            initialDelaySeconds: 10
+            periodSeconds: 5
+
+          volumeMounts:
+            - name: rabbitmq-storage
+              mountPath: /var/lib/rabbitmq
+
+      volumes:
+        - name: rabbitmq-storage
+          persistentVolumeClaim:
+            claimName: rabbitmq-pvc
+
+---
+
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: rabbitmq
+  namespace: messaging
+
+spec:
+  type: ClusterIP
+
+  selector:
+    app: rabbitmq
+
+  ports:
+    - name: amqp
+      port: 5672
+      targetPort: 5672
+
+    - name: management
+      port: 15672
+      targetPort: 15672
+
+    - name: prometheus
+      port: 15692
+      targetPort: 15692
