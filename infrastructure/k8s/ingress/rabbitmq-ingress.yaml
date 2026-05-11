@@ -17,7 +17,7 @@ spec:
 
             backend:
               service:
-                name: rabbitmq-service
+                name: rabbitmq-storage
 
                 port:
-                  number: 8000
+                  number: 15672
