@@ -3,6 +3,7 @@ kind: PersistentVolumeClaim
 
 metadata:
   name: redis-pvc
+  namespace: cache
 
 spec:
   accessModes:
@@ -10,6 +11,6 @@ spec:
 
   resources:
     requests:
-      storage: 1Gi
+      storage: 2Gi
 
   storageClassName: standard
