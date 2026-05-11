@@ -3,6 +3,7 @@ kind: PersistentVolumeClaim
 
 metadata:
   name: rabbitmq-pvc
+  namespace: messaging
 
 spec:
   accessModes:
