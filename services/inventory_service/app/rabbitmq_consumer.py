@@ -4,9 +4,14 @@ import os
 import time
 
 from .logger import log_event
-from .metrics import EVENTS_PROCESSED, EVENTS_FAILED
+from .metrics import EVENTS_PROCESSED
+from .metrics import EVENTS_FAILED
 
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
+
+RABBITMQ_HOST = os.getenv(
+    "RABBITMQ_HOST",
+    "rabbitmq"
+)
 
 MAX_RETRIES = 3
 
@@ -35,7 +40,7 @@ def get_connection():
             log_event(
                 "inventory-service",
                 "SYSTEM",
-                "RabbitMQ connection failed, retrying...",
+                "RabbitMQ connection failed",
                 {},
                 level="WARNING"
             )
@@ -83,7 +88,10 @@ def publish_to_queue(
     connection.close()
 
 
-def publish_inventory_event(data, trace_id):
+def publish_inventory_event(
+    data,
+    trace_id
+):
 
     event = {
         "version": "v1",
@@ -111,12 +119,17 @@ def publish_inventory_event(data, trace_id):
     log_event(
         "inventory-service",
         trace_id,
-        "Sent inventory_reserved",
+        "Inventory reserved",
         event
     )
 
 
-def callback(ch, method, properties, body):
+def callback(
+    ch,
+    method,
+    properties,
+    body
+):
 
     trace_id = "unknown"
 
@@ -159,8 +172,10 @@ def callback(ch, method, properties, body):
         log_event(
             "inventory-service",
             trace_id,
-            "Error",
-            {"error": str(e)},
+            "Inventory error",
+            {
+                "error": str(e)
+            },
             level="ERROR"
         )
 
@@ -228,8 +243,10 @@ def start_consumer():
             log_event(
                 "inventory-service",
                 "SYSTEM",
-                "Crash",
-                {"error": str(e)},
+                "Consumer crash",
+                {
+                    "error": str(e)
+                },
                 level="ERROR"
             )
 
