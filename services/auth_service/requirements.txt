@@ -1,4 +1,8 @@
 fastapi
 uvicorn
 PyJWT
+python-dotenv
 prometheus-fastapi-instrumentator
+sqlalchemy
+psycopg2-binary
+email-validator
