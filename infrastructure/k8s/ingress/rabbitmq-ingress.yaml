@@ -3,6 +3,7 @@ kind: Ingress
 
 metadata:
   name: rabbitmq-service-ingress
+  namespace: messaging
 
 spec:
   ingressClassName: nginx
@@ -17,7 +18,8 @@ spec:
 
             backend:
               service:
-                name: rabbitmq-storage
+                name: rabbitmq
 
                 port:
-                  number: 15672
+                  name: management
+                  
