@@ -2,55 +2,185 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build-and-check:
     runs-on: ubuntu-latest
 
     steps:
-  
+
+      # --------------------------------
+      # CHECKOUT
+      # --------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
-  
+
+      # --------------------------------
+      # PYTHON SETUP
+      # --------------------------------
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-     
+
+      # --------------------------------
+      # INSTALL GLOBAL TOOLS
+      # --------------------------------
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install flake8
 
-      - name: Run flake8 (lint check)
-        run: |
-          flake8 backend --count --select=E9,F63,F7,F82 --show-source --statistics
 
-      - name: Python import check
+      # --------------------------------
+      # LINT CHECK
+      # --------------------------------
+      - name: Run flake8
         run: |
-          python -m compileall backend
+          flake8 services shared \
+            --count \
+            --select=E9,F63,F7,F82 \
+            --show-source \
+            --statistics
 
+
+      # --------------------------------
+      # PYTHON IMPORT VALIDATION
+      # --------------------------------
+      - name: Compile Python files
+        run: |
+          python -m compileall services
+          python -m compileall shared
+
+
+      # --------------------------------
+      # DOCKER BUILDX
+      # --------------------------------
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-   
+
+      # --------------------------------
+      # BUILD API GATEWAY
+      # --------------------------------
       - name: Build API Gateway
-        run: docker build -t api-gateway ./api-gateway
-
-      - name: Build Backend Services
         run: |
-          docker build -t auth-service ./backend/auth-service
-          docker build -t user-service ./backend/user-service
-          docker build -t product-service ./backend/product-service
-          docker build -t inventory-service ./backend/inventory-service
-          docker build -t cart-service ./backend/cart-service
-          docker build -t order-service ./backend/order-service
-          docker build -t payment-service ./backend/payment-service
-          docker build -t delivery-service ./backend/delivery-service
-          docker build -t notification-service ./backend/notification-service
-          docker build -t support-service ./backend/support-service
+          docker build \
+            -t api-gateway \
+            ./services/api_gateway
 
+
+      # --------------------------------
+      # BUILD AUTH SERVICE
+      # --------------------------------
+      - name: Build Auth Service
+        run: |
+          docker build \
+            -t auth-service \
+            ./services/auth_service
+
+
+      # --------------------------------
+      # BUILD USER SERVICE
+      # --------------------------------
+      - name: Build User Service
+        run: |
+          docker build \
+            -t user-service \
+            ./services/user_service
+
+
+      # --------------------------------
+      # BUILD PRODUCT SERVICE
+      # --------------------------------
+      - name: Build Product Service
+        run: |
+          docker build \
+            -t product-service \
+            ./services/product_service
+
+
+      # --------------------------------
+      # BUILD INVENTORY SERVICE
+      # --------------------------------
+      - name: Build Inventory Service
+        run: |
+          docker build \
+            -t inventory-service \
+            ./services/inventory_service
+
+
+      # --------------------------------
+      # BUILD CART SERVICE
+      # --------------------------------
+      - name: Build Cart Service
+        run: |
+          docker build \
+            -t cart-service \
+            ./services/cart_service
+
+
+      # --------------------------------
+      # BUILD ORDER SERVICE
+      # --------------------------------
+      - name: Build Order Service
+        run: |
+          docker build \
+            -t order-service \
+            ./services/order_service
+
+
+      # --------------------------------
+      # BUILD PAYMENT SERVICE
+      # --------------------------------
+      - name: Build Payment Service
+        run: |
+          docker build \
+            -t payment-service \
+            ./services/payment_service
+
+
+      # --------------------------------
+      # BUILD DELIVERY SERVICE
+      # --------------------------------
+      - name: Build Delivery Service
+        run: |
+          docker build \
+            -t delivery-service \
+            ./services/delivery_service
+
+
+      # --------------------------------
+      # BUILD NOTIFICATION SERVICE
+      # --------------------------------
+      - name: Build Notification Service
+        run: |
+          docker build \
+            -t notification-service \
+            ./services/notification_service
+
+
+      # --------------------------------
+      # BUILD SUPPORT SERVICE
+      # --------------------------------
+      - name: Build Support Service
+        run: |
+          docker build \
+            -t support-service \
+            ./services/support_service
+
+
+      # --------------------------------
+      # SUCCESS
+      # --------------------------------
       - name: CI Success
-        run: echo "All checks + builds passed 🚀"
+        run: |
+          echo "All checks + builds passed successfully 🚀"
