@@ -2,13 +2,21 @@ import json
 
 from .rabbitmq import get_rabbitmq_connection
 
-def publish_event(queue: str, message: dict):
+from .logger import log_event
+
+
+def publish_event(
+    queue: str,
+    message: dict
+):
 
     connection = get_rabbitmq_connection()
 
     channel = connection.channel()
 
-    channel.queue_declare(queue=queue)
+    channel.queue_declare(
+        queue=queue
+    )
 
     channel.basic_publish(
         exchange="",
@@ -16,6 +24,12 @@ def publish_event(queue: str, message: dict):
         body=json.dumps(message)
     )
 
-    print(f"Published message to {queue}")
+    log_event(
+        service="notification-service",
+        event="notification_published",
+        trace_id="producer",
+        message=f"Published message to {queue}",
+        data=message
+    )
 
     connection.close()

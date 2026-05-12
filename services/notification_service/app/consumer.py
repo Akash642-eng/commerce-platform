@@ -2,12 +2,30 @@ import json
 
 from .rabbitmq import get_rabbitmq_connection
 
-def callback(ch, method, properties, body):
+from .logger import log_event
+
+from .metrics import notifications_sent
+
+
+def callback(
+    ch,
+    method,
+    properties,
+    body
+):
 
     data = json.loads(body)
 
-    print("Received event:")
-    print(data)
+    notifications_sent.inc()
+
+    log_event(
+        service="notification-service",
+        event="notification_received",
+        trace_id="consumer",
+        message="Notification received",
+        data=data
+    )
+
 
 def start_consumer():
 
@@ -15,7 +33,9 @@ def start_consumer():
 
     channel = connection.channel()
 
-    channel.queue_declare(queue="notifications")
+    channel.queue_declare(
+        queue="notifications"
+    )
 
     channel.basic_consume(
         queue="notifications",
@@ -23,6 +43,11 @@ def start_consumer():
         auto_ack=True
     )
 
-    print("Waiting for messages...")
+    log_event(
+        service="notification-service",
+        event="consumer_started",
+        trace_id="consumer",
+        message="Waiting for messages..."
+    )
 
     channel.start_consuming()

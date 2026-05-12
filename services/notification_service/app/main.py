@@ -11,15 +11,20 @@ from .consumer import start_consumer
 
 import threading
 
+
 app = FastAPI(
     title="Notification Service"
 )
 
+
 Instrumentator().instrument(app).expose(app)
+
 
 Base.metadata.create_all(bind=engine)
 
+
 app.include_router(notifications.router)
+
 
 @app.on_event("startup")
 def startup_event():
@@ -31,9 +36,18 @@ def startup_event():
 
     thread.start()
 
+
 @app.get("/")
 def root():
 
     return {
         "service": "Notification Service Running"
+    }
+
+
+@app.get("/health")
+def health():
+
+    return {
+        "status": "healthy"
     }

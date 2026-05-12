@@ -6,23 +6,26 @@ from fastapi import status
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+
 from .. import models
 from .. import schemas
 
 from ..producer import publish_event
+
 from ..metrics import notifications_created
+
+from ..logger import log_event
+
 
 router = APIRouter(
     prefix="/notifications",
     tags=["Notifications"]
 )
 
-# --------------------------------
-# CREATE NOTIFICATION
-# --------------------------------
+
 @router.post(
     "/",
-    response_model=schemas.NotificationCreate
+    response_model=schemas.NotificationResponse
 )
 def create_notification(
     notification: schemas.NotificationCreate,
@@ -36,7 +39,9 @@ def create_notification(
     )
 
     db.add(new_notification)
+
     db.commit()
+
     db.refresh(new_notification)
 
     notifications_created.inc()
@@ -50,14 +55,22 @@ def create_notification(
         }
     )
 
+    log_event(
+        service="notification-service",
+        event="notification_created",
+        trace_id=f"notification-{new_notification.id}",
+        message="Notification created",
+        data={
+            "notification_id": new_notification.id
+        }
+    )
+
     return new_notification
 
 
-# --------------------------------
-# GET USER NOTIFICATIONS
-# --------------------------------
 @router.get(
-    "/{user_id}"
+    "/{user_id}",
+    response_model=list[schemas.NotificationResponse]
 )
 def get_notifications(
     user_id: str,
@@ -73,9 +86,6 @@ def get_notifications(
     return notifications
 
 
-# --------------------------------
-# MARK AS READ
-# --------------------------------
 @router.put(
     "/{notification_id}/read"
 )
@@ -91,6 +101,7 @@ def mark_as_read(
     ).first()
 
     if not notification:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Notification not found"
@@ -99,6 +110,16 @@ def mark_as_read(
     notification.is_read = True
 
     db.commit()
+
+    log_event(
+        service="notification-service",
+        event="notification_read",
+        trace_id=f"notification-{notification.id}",
+        message="Notification marked as read",
+        data={
+            "notification_id": notification.id
+        }
+    )
 
     return {
         "message": "Notification marked as read"

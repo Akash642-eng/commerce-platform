@@ -1,5 +1,6 @@
 from prometheus_client import Counter
 
+
 notifications_created = Counter(
     "notifications_created_total",
     "Total notifications created"

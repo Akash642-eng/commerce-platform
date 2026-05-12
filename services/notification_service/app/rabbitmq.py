@@ -1,6 +1,8 @@
 import pika
 
-from .config import RABBITMQ_HOST, RABBITMQ_PORT
+from .config import RABBITMQ_HOST
+from .config import RABBITMQ_PORT
+
 
 def get_rabbitmq_connection():
 
