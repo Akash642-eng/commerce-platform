@@ -16,9 +16,6 @@ router = APIRouter(
 )
 
 
-# --------------------------------
-# CREATE CART
-# --------------------------------
 @router.post(
     "/",
     response_model=schemas.CartResponse
@@ -33,15 +30,14 @@ def create_cart(
     )
 
     db.add(new_cart)
+
     db.commit()
+
     db.refresh(new_cart)
 
     return new_cart
 
 
-# --------------------------------
-# ADD ITEM TO CART
-# --------------------------------
 @router.post(
     "/{cart_id}/item",
     response_model=schemas.CartItemResponse
@@ -52,26 +48,32 @@ def add_item(
     db: Session = Depends(get_db)
 ):
 
-    cart = db.query(models.Cart).filter(
+    cart = db.query(
+        models.Cart
+    ).filter(
         models.Cart.id == cart_id
     ).first()
 
     if not cart:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cart not found"
         )
 
-    existing_item = db.query(models.CartItem).filter(
+    existing_item = db.query(
+        models.CartItem
+    ).filter(
         models.CartItem.cart_id == cart_id,
         models.CartItem.product_id == item.product_id
     ).first()
 
-    # Increase quantity if already exists
     if existing_item:
+
         existing_item.quantity += item.quantity
 
         db.commit()
+
         db.refresh(existing_item)
 
         return existing_item
@@ -83,15 +85,14 @@ def add_item(
     )
 
     db.add(new_item)
+
     db.commit()
+
     db.refresh(new_item)
 
     return new_item
 
 
-# --------------------------------
-# GET CART
-# --------------------------------
 @router.get(
     "/{cart_id}",
     response_model=schemas.CartResponse
@@ -101,11 +102,14 @@ def get_cart(
     db: Session = Depends(get_db)
 ):
 
-    cart = db.query(models.Cart).filter(
+    cart = db.query(
+        models.Cart
+    ).filter(
         models.Cart.id == cart_id
     ).first()
 
     if not cart:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cart not found"
@@ -114,9 +118,6 @@ def get_cart(
     return cart
 
 
-# --------------------------------
-# DELETE CART ITEM
-# --------------------------------
 @router.delete(
     "/item/{item_id}"
 )
@@ -125,17 +126,21 @@ def delete_cart_item(
     db: Session = Depends(get_db)
 ):
 
-    item = db.query(models.CartItem).filter(
+    item = db.query(
+        models.CartItem
+    ).filter(
         models.CartItem.id == item_id
     ).first()
 
     if not item:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cart item not found"
         )
 
     db.delete(item)
+
     db.commit()
 
     return {
