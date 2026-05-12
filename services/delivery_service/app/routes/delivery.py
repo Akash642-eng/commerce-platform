@@ -1,10 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter
+from fastapi import Depends
+from fastapi import HTTPException
+from fastapi import status
+
 from sqlalchemy.orm import Session
-from datetime import datetime
 
 from ..database import get_db
-from .. import models, schemas
+
+from .. import models
+from .. import schemas
+
 from ..logger import log_event
+
+from datetime import datetime
+
 
 router = APIRouter(
     prefix="/deliveries",
@@ -12,39 +21,56 @@ router = APIRouter(
 )
 
 
-@router.post("/agent", response_model=schemas.DeliveryAgentResponse)
+@router.post(
+    "/agent",
+    response_model=schemas.DeliveryAgentResponse
+)
 def create_agent(
     agent: schemas.DeliveryAgentCreate,
     db: Session = Depends(get_db)
 ):
-    new_agent = models.DeliveryAgent(**agent.dict())
+
+    new_agent = models.DeliveryAgent(
+        **agent.dict()
+    )
 
     db.add(new_agent)
+
     db.commit()
+
     db.refresh(new_agent)
 
     log_event(
         service="delivery-service",
         trace_id=f"agent-{new_agent.id}",
         message="Delivery agent created",
-        data={"agent_id": new_agent.id}
+        data={
+            "agent_id": new_agent.id
+        }
     )
 
     return new_agent
 
 
-@router.post("/", response_model=schemas.DeliveryResponse)
+@router.post(
+    "/",
+    response_model=schemas.DeliveryResponse
+)
 def assign_delivery(
     delivery: schemas.DeliveryCreate,
     db: Session = Depends(get_db)
 ):
-    agent = db.query(models.DeliveryAgent).filter(
+
+    agent = db.query(
+        models.DeliveryAgent
+    ).filter(
         models.DeliveryAgent.id == delivery.delivery_agent_id
     ).first()
 
     if not agent:
+
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Delivery agent not found"
         )
 
@@ -56,7 +82,9 @@ def assign_delivery(
     )
 
     db.add(new_delivery)
+
     db.commit()
+
     db.refresh(new_delivery)
 
     log_event(
@@ -77,17 +105,22 @@ def mark_delivered(
     order_id: int,
     db: Session = Depends(get_db)
 ):
-    delivery = db.query(models.Delivery).filter(
+
+    delivery = db.query(
+        models.Delivery
+    ).filter(
         models.Delivery.order_id == order_id
     ).first()
 
     if not delivery:
+
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Delivery not found"
         )
 
     delivery.status = "DELIVERED"
+
     delivery.delivered_at = datetime.utcnow()
 
     db.commit()
@@ -96,7 +129,9 @@ def mark_delivered(
         service="delivery-service",
         trace_id=f"delivery-{delivery.id}",
         message="Order delivered",
-        data={"order_id": order_id}
+        data={
+            "order_id": order_id
+        }
     )
 
     return {
@@ -105,18 +140,25 @@ def mark_delivered(
     }
 
 
-@router.get("/{order_id}", response_model=schemas.DeliveryResponse)
+@router.get(
+    "/{order_id}",
+    response_model=schemas.DeliveryResponse
+)
 def get_delivery(
     order_id: int,
     db: Session = Depends(get_db)
 ):
-    delivery = db.query(models.Delivery).filter(
+
+    delivery = db.query(
+        models.Delivery
+    ).filter(
         models.Delivery.order_id == order_id
     ).first()
 
     if not delivery:
+
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Delivery not found"
         )
 
