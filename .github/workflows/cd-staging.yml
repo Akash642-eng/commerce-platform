@@ -1,0 +1,122 @@
+name: CD Staging Pipeline
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # --------------------------------
+      # CHECKOUT
+      # --------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+      # --------------------------------
+      # SETUP PYTHON
+      # --------------------------------
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+
+      # --------------------------------
+      # DOCKER BUILDX
+      # --------------------------------
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+
+      # --------------------------------
+      # BUILD IMAGES
+      # --------------------------------
+      - name: Build API Gateway
+        run: |
+          docker build \
+            -t api-gateway:staging \
+            ./services/api_gateway
+
+
+      - name: Build Auth Service
+        run: |
+          docker build \
+            -t auth-service:staging \
+            ./services/auth_service
+
+
+      - name: Build User Service
+        run: |
+          docker build \
+            -t user-service:staging \
+            ./services/user_service
+
+
+      - name: Build Product Service
+        run: |
+          docker build \
+            -t product-service:staging \
+            ./services/product_service
+
+
+      - name: Build Inventory Service
+        run: |
+          docker build \
+            -t inventory-service:staging \
+            ./services/inventory_service
+
+
+      - name: Build Cart Service
+        run: |
+          docker build \
+            -t cart-service:staging \
+            ./services/cart_service
+
+
+      - name: Build Order Service
+        run: |
+          docker build \
+            -t order-service:staging \
+            ./services/order_service
+
+
+      - name: Build Payment Service
+        run: |
+          docker build \
+            -t payment-service:staging \
+            ./services/payment_service
+
+
+      - name: Build Delivery Service
+        run: |
+          docker build \
+            -t delivery-service:staging \
+            ./services/delivery_service
+
+
+      - name: Build Notification Service
+        run: |
+          docker build \
+            -t notification-service:staging \
+            ./services/notification_service
+
+
+      - name: Build Support Service
+        run: |
+          docker build \
+            -t support-service:staging \
+            ./services/support_service
+
+
+      # --------------------------------
+      # STAGING SUCCESS
+      # --------------------------------
+      - name: Deployment Success
+        run: |
+          echo "Staging deployment pipeline completed 🚀"

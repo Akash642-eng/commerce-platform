@@ -1,0 +1,79 @@
+name: CD Production Pipeline
+
+on:
+  push:
+    branches:
+      - release
+
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # --------------------------------
+      # CHECKOUT
+      # --------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+      # --------------------------------
+      # PYTHON
+      # --------------------------------
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+
+      # --------------------------------
+      # DOCKER BUILDX
+      # --------------------------------
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+
+      # --------------------------------
+      # BUILD ALL SERVICES
+      # --------------------------------
+      - name: Build API Gateway
+        run: docker build -t api-gateway:prod ./services/api_gateway
+
+      - name: Build Auth Service
+        run: docker build -t auth-service:prod ./services/auth_service
+
+      - name: Build User Service
+        run: docker build -t user-service:prod ./services/user_service
+
+      - name: Build Product Service
+        run: docker build -t product-service:prod ./services/product_service
+
+      - name: Build Inventory Service
+        run: docker build -t inventory-service:prod ./services/inventory_service
+
+      - name: Build Cart Service
+        run: docker build -t cart-service:prod ./services/cart_service
+
+      - name: Build Order Service
+        run: docker build -t order-service:prod ./services/order_service
+
+      - name: Build Payment Service
+        run: docker build -t payment-service:prod ./services/payment_service
+
+      - name: Build Delivery Service
+        run: docker build -t delivery-service:prod ./services/delivery_service
+
+      - name: Build Notification Service
+        run: docker build -t notification-service:prod ./services/notification_service
+
+      - name: Build Support Service
+        run: docker build -t support-service:prod ./services/support_service
+
+
+      # --------------------------------
+      # PRODUCTION SUCCESS
+      # --------------------------------
+      - name: Production Build Success
+        run: |
+          echo "Production pipeline completed successfully 🚀"
