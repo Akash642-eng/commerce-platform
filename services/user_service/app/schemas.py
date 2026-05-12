@@ -5,9 +5,6 @@ from pydantic import EmailStr
 from pydantic import Field
 
 
-# --------------------------------
-# BASE USER SCHEMA
-# --------------------------------
 class UserBase(BaseModel):
 
     name: str = Field(
@@ -18,9 +15,6 @@ class UserBase(BaseModel):
     email: EmailStr
 
 
-# --------------------------------
-# USER CREATE
-# --------------------------------
 class UserCreate(UserBase):
 
     password: str = Field(
@@ -29,9 +23,6 @@ class UserCreate(UserBase):
     )
 
 
-# --------------------------------
-# USER UPDATE
-# --------------------------------
 class UserUpdate(BaseModel):
 
     name: Optional[str] = Field(
@@ -49,9 +40,6 @@ class UserUpdate(BaseModel):
     )
 
 
-# --------------------------------
-# USER LOGIN
-# --------------------------------
 class UserLogin(BaseModel):
 
     email: EmailStr
@@ -59,9 +47,6 @@ class UserLogin(BaseModel):
     password: str
 
 
-# --------------------------------
-# USER RESPONSE
-# --------------------------------
 class UserResponse(UserBase):
 
     id: int
@@ -75,9 +60,6 @@ class UserResponse(UserBase):
         from_attributes = True
 
 
-# --------------------------------
-# TOKEN RESPONSE
-# --------------------------------
 class TokenResponse(BaseModel):
 
     access_token: str
@@ -85,9 +67,6 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
-# --------------------------------
-# HEALTH RESPONSE
-# --------------------------------
 class HealthResponse(BaseModel):
 
     status: str

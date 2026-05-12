@@ -6,5 +6,12 @@ ALLOWED_TRANSITIONS = {
 }
 
 
-def can_transition(current, new):
-    return new in ALLOWED_TRANSITIONS.get(current, [])
+def can_transition(
+    current,
+    new
+):
+
+    return new in ALLOWED_TRANSITIONS.get(
+        current,
+        []
+    )

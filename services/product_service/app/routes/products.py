@@ -21,10 +21,6 @@ router = APIRouter(
 )
 
 
-# --------------------------------
-# CREATE PRODUCT
-# --------------------------------
-
 @router.post(
     "/",
     response_model=schemas.ProductResponse
@@ -34,7 +30,9 @@ def create_product(
     db: Session = Depends(get_db)
 ):
 
-    category = db.query(models.Category).filter(
+    category = db.query(
+        models.Category
+    ).filter(
         models.Category.id == product.category_id
     ).first()
 
@@ -64,10 +62,6 @@ def create_product(
     return new_product
 
 
-# --------------------------------
-# GET ALL PRODUCTS
-# --------------------------------
-
 @router.get(
     "/",
     response_model=list[schemas.ProductResponse]
@@ -82,7 +76,9 @@ def get_products(
 
         return json.loads(cached_products)
 
-    products = db.query(models.Product).all()
+    products = db.query(
+        models.Product
+    ).all()
 
     result = []
 
@@ -107,10 +103,6 @@ def get_products(
     return result
 
 
-# --------------------------------
-# GET PRODUCT BY ID
-# --------------------------------
-
 @router.get(
     "/{product_id}",
     response_model=schemas.ProductResponse
@@ -120,7 +112,9 @@ def get_product(
     db: Session = Depends(get_db)
 ):
 
-    product = db.query(models.Product).filter(
+    product = db.query(
+        models.Product
+    ).filter(
         models.Product.id == product_id
     ).first()
 
@@ -134,10 +128,6 @@ def get_product(
     return product
 
 
-# --------------------------------
-# UPDATE PRODUCT
-# --------------------------------
-
 @router.put(
     "/{product_id}",
     response_model=schemas.ProductResponse
@@ -148,7 +138,9 @@ def update_product(
     db: Session = Depends(get_db)
 ):
 
-    product_query = db.query(models.Product).filter(
+    product_query = db.query(
+        models.Product
+    ).filter(
         models.Product.id == product_id
     )
 
@@ -168,20 +160,22 @@ def update_product(
 
     db.commit()
 
+    redis_client.delete("products")
+
     return product_query.first()
 
 
-# --------------------------------
-# DELETE PRODUCT
-# --------------------------------
-
-@router.delete("/{product_id}")
+@router.delete(
+    "/{product_id}"
+)
 def delete_product(
     product_id: int,
     db: Session = Depends(get_db)
 ):
 
-    product_query = db.query(models.Product).filter(
+    product_query = db.query(
+        models.Product
+    ).filter(
         models.Product.id == product_id
     )
 

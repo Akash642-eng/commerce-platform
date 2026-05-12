@@ -8,15 +8,12 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from .database import Base
 from .database import engine
 
-from .logger import logger
+from .logger import log_event
 
 from .routes import users
 from .routes import auth
 
 
-# --------------------------------
-# LOAD ENV VARIABLES
-# --------------------------------
 load_dotenv()
 
 
@@ -26,47 +23,38 @@ app = FastAPI(
 )
 
 
-# --------------------------------
-# DATABASE
-# --------------------------------
 Base.metadata.create_all(bind=engine)
 
 
-# --------------------------------
-# METRICS
-# --------------------------------
 Instrumentator().instrument(app).expose(app)
 
 
-# --------------------------------
-# ROUTES
-# --------------------------------
 app.include_router(auth.router)
 app.include_router(users.router)
 
 
-# --------------------------------
-# STARTUP EVENTS
-# --------------------------------
 @app.on_event("startup")
 def startup_event():
 
-    logger.info(
-        "User Service started successfully"
+    log_event(
+        service="user-service",
+        event="startup",
+        trace_id="system",
+        message="User Service started successfully"
     )
 
 
 @app.on_event("shutdown")
 def shutdown_event():
 
-    logger.info(
-        "User Service shutting down"
+    log_event(
+        service="user-service",
+        event="shutdown",
+        trace_id="system",
+        message="User Service shutting down"
     )
 
 
-# --------------------------------
-# ROOT
-# --------------------------------
 @app.get("/")
 def root():
 
@@ -77,9 +65,6 @@ def root():
     }
 
 
-# --------------------------------
-# HEALTH CHECK
-# --------------------------------
 @app.get("/health")
 def health_check():
 
@@ -91,9 +76,6 @@ def health_check():
     )
 
 
-# --------------------------------
-# LIVENESS PROBE
-# --------------------------------
 @app.get("/live")
 def liveness_probe():
 
@@ -105,9 +87,6 @@ def liveness_probe():
     )
 
 
-# --------------------------------
-# READINESS PROBE
-# --------------------------------
 @app.get("/ready")
 def readiness_probe():
 
@@ -127,8 +106,13 @@ def readiness_probe():
 
     except Exception as e:
 
-        logger.error(
-            f"Readiness probe failed: {str(e)}"
+        log_event(
+            service="user-service",
+            event="readiness_failed",
+            trace_id="system",
+            message="Readiness probe failed",
+            data={"error": str(e)},
+            level="ERROR"
         )
 
         return JSONResponse(

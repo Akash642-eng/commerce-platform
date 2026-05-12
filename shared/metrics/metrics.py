@@ -14,20 +14,14 @@ EVENTS_FAILED = Counter(
     ["service", "event"]
 )
 
-RETRY_EVENTS = Counter(
-    "retry_events_total",
-    "Total retry events",
-    ["service"]
+REQUEST_COUNT = Counter(
+    "http_requests_total",
+    "Total HTTP requests",
+    ["service", "method", "endpoint"]
 )
 
-DLQ_EVENTS = Counter(
-    "dlq_events_total",
-    "Total DLQ events",
-    ["service"]
-)
-
-PROCESSING_TIME = Histogram(
-    "event_processing_seconds",
-    "Event processing latency",
-    ["service", "event"]
+REQUEST_LATENCY = Histogram(
+    "http_request_latency_seconds",
+    "HTTP request latency",
+    ["service", "endpoint"]
 )

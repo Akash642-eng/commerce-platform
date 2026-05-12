@@ -1,5 +1,6 @@
 from prometheus_client import Counter
 
+
 EVENTS_PROCESSED = Counter(
     "payment_events_processed_total",
     "Total processed payment events",

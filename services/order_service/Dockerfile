@@ -1,6 +1,5 @@
 FROM python:3.12-slim
 
-
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
@@ -12,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
+
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
@@ -21,4 +21,4 @@ RUN chmod +x wait-for-db.sh || true
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "./wait-for-db.sh && uvicorn main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "./wait-for-db.sh && uvicorn services.order_service.app.main:app --host 0.0.0.0 --port 8000"]

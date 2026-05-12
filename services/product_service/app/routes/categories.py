@@ -15,10 +15,6 @@ router = APIRouter(
 )
 
 
-# --------------------------------
-# CREATE CATEGORY
-# --------------------------------
-
 @router.post(
     "/",
     response_model=schemas.CategoryResponse
@@ -42,10 +38,6 @@ def create_category(
     return new_category
 
 
-# --------------------------------
-# GET ALL CATEGORIES
-# --------------------------------
-
 @router.get(
     "/",
     response_model=list[schemas.CategoryResponse]
@@ -54,4 +46,6 @@ def get_categories(
     db: Session = Depends(get_db)
 ):
 
-    return db.query(models.Category).all()
+    return db.query(
+        models.Category
+    ).all()

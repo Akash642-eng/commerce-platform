@@ -5,12 +5,24 @@ import time
 
 from .logger import log_event
 
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
+
+RABBITMQ_HOST = os.getenv(
+    "RABBITMQ_HOST",
+    "rabbitmq"
+)
+
 DLQ = "payment_dlq"
 
 
-def callback(ch, method, properties, body):
+def callback(
+    ch,
+    method,
+    properties,
+    body
+):
+
     try:
+
         data = json.loads(body)
 
         trace_id = (
@@ -20,36 +32,55 @@ def callback(ch, method, properties, body):
         )
 
         log_event(
-            "payment-service",
-            trace_id,
-            "MESSAGE IN DLQ",
-            data,
+            service="payment-service",
+            event="dlq_message",
+            trace_id=trace_id,
+            message="MESSAGE IN DLQ",
+            data=data,
             level="ERROR"
         )
 
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+        ch.basic_ack(
+            delivery_tag=method.delivery_tag
+        )
 
     except Exception as e:
+
         log_event(
-            "payment-service",
-            "SYSTEM",
-            "DLQ processing error",
-            {"error": str(e)},
+            service="payment-service",
+            event="dlq_error",
+            trace_id="system",
+            message="DLQ processing error",
+            data={"error": str(e)},
             level="ERROR"
         )
 
 
 def start_dlq_consumer():
-    log_event("payment-service", "SYSTEM", "DLQ consumer started")
+
+    log_event(
+        service="payment-service",
+        event="dlq_consumer_start",
+        trace_id="system",
+        message="DLQ consumer started"
+    )
 
     while True:
+
         try:
+
             connection = pika.BlockingConnection(
-                pika.ConnectionParameters(host=RABBITMQ_HOST)
+                pika.ConnectionParameters(
+                    host=RABBITMQ_HOST
+                )
             )
 
             channel = connection.channel()
-            channel.queue_declare(queue=DLQ, durable=True)
+
+            channel.queue_declare(
+                queue=DLQ,
+                durable=True
+            )
 
             channel.basic_consume(
                 queue=DLQ,
@@ -57,16 +88,24 @@ def start_dlq_consumer():
                 auto_ack=False
             )
 
-            log_event("payment-service", "SYSTEM", "Waiting for DLQ messages")
+            log_event(
+                service="payment-service",
+                event="dlq_waiting",
+                trace_id="system",
+                message="Waiting for DLQ messages"
+            )
 
             channel.start_consuming()
 
         except Exception as e:
+
             log_event(
-                "payment-service",
-                "SYSTEM",
-                "DLQ consumer retry",
-                {"error": str(e)},
+                service="payment-service",
+                event="dlq_retry",
+                trace_id="system",
+                message="DLQ consumer retry",
+                data={"error": str(e)},
                 level="ERROR"
             )
+
             time.sleep(5)

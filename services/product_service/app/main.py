@@ -2,10 +2,16 @@ from fastapi import FastAPI
 
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from .database import engine, Base
-from .routes import products, categories
+from .database import engine
+from .database import Base
 
-app = FastAPI(title="Product Service")
+from .routes import products
+from .routes import categories
+
+
+app = FastAPI(
+    title="Product Service"
+)
 
 
 Instrumentator().instrument(app).expose(app)
@@ -20,13 +26,15 @@ app.include_router(categories.router)
 
 @app.get("/")
 def read_root():
+
     return {
         "service": "Product Service Running"
     }
 
 
 @app.get("/health")
-def health_check():
+def health():
+
     return {
         "status": "healthy"
     }

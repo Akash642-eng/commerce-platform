@@ -2,13 +2,11 @@ from pydantic import BaseModel
 from pydantic import Field
 
 
-# --------------------------------
-# CATEGORY
-# --------------------------------
-
 class CategoryCreate(BaseModel):
 
-    name: str = Field(min_length=2)
+    name: str = Field(
+        min_length=2
+    )
 
     description: str
 
@@ -22,16 +20,15 @@ class CategoryResponse(BaseModel):
     description: str
 
     class Config:
+
         from_attributes = True
 
 
-# --------------------------------
-# PRODUCT
-# --------------------------------
-
 class ProductCreate(BaseModel):
 
-    name: str = Field(min_length=2)
+    name: str = Field(
+        min_length=2
+    )
 
     description: str
 
@@ -74,4 +71,5 @@ class ProductResponse(BaseModel):
     category_id: int
 
     class Config:
+
         from_attributes = True
