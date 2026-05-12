@@ -1,12 +1,14 @@
-from fastapi import FastAPI, Request, Response, HTTPException
+from fastapi import FastAPI
+from fastapi import Request
+from fastapi import Response
+from fastapi import HTTPException
+
 import httpx
 import time
 import json
 import redis
 import os
 import uuid
-
-from shared.tracing.tracing import setup_tracing
 
 from prometheus_client import (
     Counter,
@@ -15,22 +17,19 @@ from prometheus_client import (
     CONTENT_TYPE_LATEST
 )
 
+from shared.tracing.tracing import setup_tracing
+
 from .config import SERVICES
 
-# =========================
-# APP
-# =========================
 
 app = FastAPI(
     title="API Gateway",
     redirect_slashes=False
 )
 
+
 setup_tracing(app, "api-gateway")
 
-# =========================
-# METRICS
-# =========================
 
 REQUEST_COUNT = Counter(
     "gateway_requests_total",
@@ -44,9 +43,6 @@ REQUEST_LATENCY = Histogram(
     ["endpoint"]
 )
 
-# =========================
-# CONSTANTS
-# =========================
 
 RESERVED_ROUTES = {
     "health",
@@ -56,7 +52,8 @@ RESERVED_ROUTES = {
     "metrics"
 }
 
-AUTH_SERVICE_URL = "http://auth-service:8000"
+
+AUTH_SERVICE_URL = SERVICES["auth"]
 
 ENV = os.getenv("ENV", "dev")
 
@@ -66,9 +63,6 @@ RATE_LIMIT = 5
 
 WINDOW_SIZE = 10
 
-# =========================
-# REDIS
-# =========================
 
 redis_client = redis.Redis(
     host=REDIS_HOST,
@@ -76,19 +70,11 @@ redis_client = redis.Redis(
     decode_responses=True
 )
 
-# =========================
-# HEALTH
-# =========================
 
 @app.get("/health")
 async def health():
-    return {
-        "status": "ok"
-    }
+    return {"status": "ok"}
 
-# =========================
-# METRICS ENDPOINT
-# =========================
 
 @app.get("/metrics")
 def metrics():
@@ -97,9 +83,6 @@ def metrics():
         media_type=CONTENT_TYPE_LATEST
     )
 
-# =========================
-# ROOT
-# =========================
 
 @app.get("/")
 def root():
@@ -107,9 +90,6 @@ def root():
         "message": f"API Gateway Running ({ENV})"
     }
 
-# =========================
-# AUTH
-# =========================
 
 async def verify_token(request: Request):
 
@@ -146,20 +126,11 @@ async def verify_token(request: Request):
 
     except Exception:
 
-        if ENV == "dev":
-            raise HTTPException(
-                status_code=401,
-                detail="Auth service error (dev)"
-            )
-
         raise HTTPException(
             status_code=401,
             detail="Unauthorized"
         )
 
-# =========================
-# RATE LIMIT
-# =========================
 
 def check_rate_limit(client_id: str):
 
@@ -168,14 +139,17 @@ def check_rate_limit(client_id: str):
     current = redis_client.get(key)
 
     if current is None:
+
         redis_client.set(
             key,
             1,
             ex=WINDOW_SIZE
         )
+
         return
 
     if int(current) >= RATE_LIMIT:
+
         raise HTTPException(
             status_code=429,
             detail="Too many requests"
@@ -183,18 +157,17 @@ def check_rate_limit(client_id: str):
 
     redis_client.incr(key)
 
-# =========================
-# CACHE
-# =========================
 
 def get_cache_key(service, path, query):
     return f"cache:{service}:{path}:{query}"
+
 
 def get_cached_response(key):
 
     cached = redis_client.get(key)
 
     return json.loads(cached) if cached else None
+
 
 def set_cache_response(key, data):
 
@@ -204,19 +177,18 @@ def set_cache_response(key, data):
         ex=15
     )
 
-# =========================
-# VALIDATION
-# =========================
 
 def validate_order_request(body):
 
     if not body:
+
         raise HTTPException(
             status_code=400,
             detail="Empty body"
         )
 
     if "user_id" not in body:
+
         raise HTTPException(
             status_code=400,
             detail="user_id required"
@@ -226,20 +198,19 @@ def validate_order_request(body):
         body["items"],
         list
     ):
+
         raise HTTPException(
             status_code=400,
             detail="items must be list"
         )
 
     if "total_amount" not in body:
+
         raise HTTPException(
             status_code=400,
             detail="total_amount required"
         )
 
-# =========================
-# GATEWAY
-# =========================
 
 @app.api_route(
     "/{service}/{path:path}",
@@ -261,12 +232,14 @@ async def gateway(
         service in RESERVED_ROUTES
         or service.startswith("health")
     ):
+
         raise HTTPException(
             status_code=404,
             detail="Not found"
         )
 
     if service not in SERVICES:
+
         raise HTTPException(
             status_code=404,
             detail="Service not found"
@@ -282,10 +255,6 @@ async def gateway(
 
     try:
 
-        # =========================
-        # AUTH
-        # =========================
-
         if service != "auth":
 
             user = await verify_token(request)
@@ -293,10 +262,6 @@ async def gateway(
             client_id = user["user"]["user_id"]
 
             check_rate_limit(client_id)
-
-        # =========================
-        # URL BUILD
-        # =========================
 
         service_url = SERVICES[
             service
@@ -309,19 +274,11 @@ async def gateway(
 
         url = f"{service_url}{target_path}"
 
-        # =========================
-        # HEADERS
-        # =========================
-
         headers = dict(request.headers)
 
         headers.pop("host", None)
 
         headers["x-trace-id"] = trace_id
-
-        # =========================
-        # BODY
-        # =========================
 
         raw_body = await request.body()
 
@@ -330,31 +287,22 @@ async def gateway(
         if raw_body:
 
             try:
-                parsed_body = json.loads(
-                    raw_body
-                )
+
+                parsed_body = json.loads(raw_body)
 
             except Exception:
+
                 raise HTTPException(
                     status_code=400,
                     detail="Invalid JSON"
                 )
 
-        # =========================
-        # VALIDATION
-        # =========================
-
         if (
             service == "orders"
             and request.method == "POST"
         ):
-            validate_order_request(
-                parsed_body
-            )
 
-        # =========================
-        # CACHE
-        # =========================
+            validate_order_request(parsed_body)
 
         cache_key = get_cache_key(
             service,
@@ -364,9 +312,7 @@ async def gateway(
 
         if request.method == "GET":
 
-            cached = get_cached_response(
-                cache_key
-            )
+            cached = get_cached_response(cache_key)
 
             if cached:
 
@@ -378,19 +324,11 @@ async def gateway(
 
                 return cached
 
-        # =========================
-        # TIMEOUT
-        # =========================
-
         timeout = (
             10.0
             if ENV == "dev"
             else 5.0
         )
-
-        # =========================
-        # FORWARD REQUEST
-        # =========================
 
         async with httpx.AsyncClient(
             timeout=timeout
@@ -404,33 +342,24 @@ async def gateway(
                 content=raw_body if raw_body else None
             )
 
-        # =========================
-        # RESPONSE PARSE
-        # =========================
-
         try:
+
             response_data = response.json()
 
         except Exception:
+
             response_data = {
                 "message": response.text
             }
 
-        # =========================
-        # CACHE SAVE
-        # =========================
-
         if request.method == "GET":
+
             set_cache_response(
                 cache_key,
                 response_data
             )
 
         duration = time.time() - start_time
-
-        # =========================
-        # METRICS
-        # =========================
 
         REQUEST_COUNT.labels(
             request.method,
@@ -441,10 +370,6 @@ async def gateway(
         REQUEST_LATENCY.labels(
             endpoint
         ).observe(duration)
-
-        # =========================
-        # FINAL RESPONSE
-        # =========================
 
         return Response(
             content=json.dumps(response_data),
@@ -463,14 +388,7 @@ async def gateway(
             "503"
         ).inc()
 
-        if ENV == "dev":
-
-            raise HTTPException(
-                status_code=503,
-                detail=str(e)
-            )
-
         raise HTTPException(
             status_code=503,
-            detail="Service unavailable"
+            detail=str(e)
         )
