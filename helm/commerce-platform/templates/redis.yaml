@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: redis
+  namespace: {{ .Values.namespace.cache }}
+
+spec:
+  replicas: 1
+
+  strategy:
+    type: Recreate
+
+  selector:
+    matchLabels:
+      app: redis
+
+  template:
+    metadata:
+      labels:
+        app: redis
+
+    spec:
+      containers:
+        - name: redis
+
+          image: redis:7
+
+          args:
+            - "--appendonly"
+            - "yes"
+
+          ports:
+            - containerPort: 6379
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+
+            limits:
+              cpu: 250m
+              memory: 512Mi
+
+          volumeMounts:
+            - name: redis-storage
+              mountPath: /data
+
+      volumes:
+        - name: redis-storage
+          persistentVolumeClaim:
+            claimName: redis-pvc
+
+---
+
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: redis
+  namespace: {{ .Values.namespace.cache }}
+
+spec:
+  selector:
+    app: redis
+
+  ports:
+    - port: 6379
+      targetPort: 6379
+
+  type: ClusterIP

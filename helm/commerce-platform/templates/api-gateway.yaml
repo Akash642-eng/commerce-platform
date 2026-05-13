@@ -3,6 +3,7 @@ kind: Deployment
 
 metadata:
   name: api-gateway
+  namespace: {{ .Values.namespace.backend }}
 
 spec:
   replicas: {{ .Values.replicaCount }}
@@ -20,7 +21,7 @@ spec:
       containers:
         - name: api-gateway
 
-          image: "{{ .Values.image.repository }}/api-gateway:latest"
+          image: api-gateway:latest
 
           imagePullPolicy: {{ .Values.image.pullPolicy }}
 
@@ -43,6 +44,7 @@ kind: Service
 
 metadata:
   name: api-gateway
+  namespace: {{ .Values.namespace.backend }}
 
 spec:
   selector:

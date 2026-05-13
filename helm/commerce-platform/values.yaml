@@ -1,7 +1,11 @@
-namespace: backend
+namespace:
+  backend: backend
+  monitoring: monitoring
+  database: database
+  messaging: messaging
+  cache: cache
 
 image:
-  repository: commerce-platform
   pullPolicy: IfNotPresent
 
 replicaCount: 1
@@ -14,3 +18,81 @@ resources:
   limits:
     cpu: 300m
     memory: 256Mi
+
+postgres:
+  storage: 2Gi
+
+redis:
+  storage: 2Gi
+
+rabbitmq:
+  storage: 2Gi
+
+grafana:
+  storage: 2Gi
+
+prometheus:
+  storage: 5Gi
+
+services:
+  - name: auth-service
+    image: auth-service:latest
+
+  - name: user-service
+    image: user-service:latest
+
+  - name: product-service
+    image: product-service:latest
+
+  - name: inventory-service
+    image: inventory-service:latest
+
+  - name: cart-service
+    image: cart-service:latest
+
+  - name: order-service
+    image: order-service:latest
+
+  - name: payment-service
+    image: payment-service:latest
+
+  - name: delivery-service
+    image: delivery-service:latest
+
+  - name: notification-service
+    image: notification-service:latest
+
+  - name: support-service
+    image: support-service:latest
+
+ingress:
+
+  - name: grafana-ingress
+    namespace: monitoring
+    host: grafana.local
+    service: grafana
+    port: 3000
+
+  - name: prometheus-ingress
+    namespace: monitoring
+    host: prometheus.local
+    service: prometheus
+    port: 9090
+
+  - name: backend-ingress
+    namespace: backend
+    host: api.local
+    service: api-gateway
+    port: 8000
+
+  - name: support-ingress
+    namespace: default
+    host: support.local
+    service: support-service
+    port: 8000
+
+  - name: rabbitmq-ingress
+    namespace: messaging
+    host: rabbitmq.local
+    service: rabbitmq
+    port: 15672

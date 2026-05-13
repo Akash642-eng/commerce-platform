@@ -1,0 +1,62 @@
+{{- range .Values.services }}
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.namespace.backend }}
+
+spec:
+  replicas: {{ $.Values.replicaCount }}
+
+  selector:
+    matchLabels:
+      app: {{ .name }}
+
+  template:
+    metadata:
+      labels:
+        app: {{ .name }}
+
+    spec:
+      containers:
+        - name: {{ .name }}
+
+          image: {{ .image }}
+
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+
+          ports:
+            - containerPort: 8000
+
+          resources:
+            requests:
+              cpu: {{ $.Values.resources.requests.cpu }}
+              memory: {{ $.Values.resources.requests.memory }}
+
+            limits:
+              cpu: {{ $.Values.resources.limits.cpu }}
+              memory: {{ $.Values.resources.limits.memory }}
+
+---
+
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.namespace.backend }}
+
+spec:
+  selector:
+    app: {{ .name }}
+
+  ports:
+    - port: 8000
+      targetPort: 8000
+
+  type: ClusterIP
+
+---
+{{- end }}
