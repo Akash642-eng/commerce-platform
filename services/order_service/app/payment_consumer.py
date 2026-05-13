@@ -12,7 +12,9 @@ from .config import settings
 
 from .metrics import EVENTS_PROCESSED, EVENTS_FAILED
 
-ENV = os.getenv("ENV", "dev")
+from shared.config.settings import settings
+
+ENV = settings.ENV
 
 RABBITMQ_HOST = settings.RABBITMQ_HOST
 

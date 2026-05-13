@@ -6,10 +6,9 @@ import time
 from .logger import log_event
 
 
-RABBITMQ_HOST = os.getenv(
-    "RABBITMQ_HOST",
-    "rabbitmq"
-)
+from shared.config.settings import settings
+
+RABBITMQ_HOST = settings.RABBITMQ_HOST
 
 
 def get_connection():

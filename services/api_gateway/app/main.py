@@ -10,6 +10,8 @@ import redis
 import os
 import uuid
 
+from shared.config.settings import settings
+
 from prometheus_client import (
     Counter,
     Histogram,
@@ -55,9 +57,9 @@ RESERVED_ROUTES = {
 
 AUTH_SERVICE_URL = SERVICES["auth"]
 
-ENV = os.getenv("ENV", "dev")
+ENV = settings.ENV
 
-REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+REDIS_HOST = settings.REDIS_HOST
 
 RATE_LIMIT = 5
 

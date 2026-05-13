@@ -7,11 +7,9 @@ from .logger import log_event
 from .metrics import EVENTS_PROCESSED
 from .metrics import EVENTS_FAILED
 
+from shared.config.settings import settings
 
-RABBITMQ_HOST = os.getenv(
-    "RABBITMQ_HOST",
-    "rabbitmq"
-)
+RABBITMQ_HOST = settings.RABBITMQ_HOST
 
 MAX_RETRIES = 3
 
