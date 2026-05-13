@@ -2,7 +2,7 @@
 
 echo "Waiting for postgres..."
 
-while ! nc -z postgres 5432; do
+while ! nc -z postgres.database.svc.cluster.local 5432; do
     sleep 1
 done
 

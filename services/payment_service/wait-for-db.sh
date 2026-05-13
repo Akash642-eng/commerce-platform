@@ -2,13 +2,13 @@
 
 echo "Waiting for postgres..."
 
-while ! nc -z postgres 5432; do
+while ! nc -z postgres.database.svc.cluster.local 5432; do
   sleep 1
 done
 
 echo "Waiting for rabbitmq..."
 
-while ! nc -z rabbitmq 5672; do
+while ! nc -z rabbitmq.messaging.svc.cluster.local 5672; do
   sleep 1
 done
 

@@ -21,7 +21,7 @@ class Settings:
     # --------------------------------
     DATABASE_URL = os.getenv(
         "DATABASE_URL",
-        "postgresql://commerce:commerce@postgres:5432/commerce_db"
+        "postgresql://commerce:commerce@postgres.database.svc.cluster.local:5432/commerce_db"
     )
 
     # --------------------------------
@@ -29,7 +29,7 @@ class Settings:
     # --------------------------------
     REDIS_HOST = os.getenv(
         "REDIS_HOST",
-        "redis"
+        "redis.cache.svc.cluster.local"
     )
 
     REDIS_PORT = int(
@@ -44,7 +44,7 @@ class Settings:
     # --------------------------------
     RABBITMQ_HOST = os.getenv(
         "RABBITMQ_HOST",
-        "rabbitmq"
+        "rabbitmq.messaging.svc.cluster.local"
     )
 
     RABBITMQ_PORT = int(
