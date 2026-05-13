@@ -1,0 +1,7 @@
+resources:
+  - ../../../k8s/services
+  - ../../../k8s/database
+  - ../../../k8s/cache
+  - ../../../k8s/messaging
+  - ../../../k8s/monitoring
+  - ../../../k8s/ingress
