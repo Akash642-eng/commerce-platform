@@ -3,7 +3,7 @@ kind: Deployment
 
 metadata:
   name: postgres
-  namespace: {{ .Values.namespace.database }}
+  namespace: {{ $.Release.Namespace }}
 
 spec:
   replicas: 1
@@ -64,7 +64,7 @@ kind: Service
 
 metadata:
   name: postgres
-  namespace: {{ .Values.namespace.database }}
+  namespace: {{ $.Release.Namespace }}
 
 spec:
   selector:

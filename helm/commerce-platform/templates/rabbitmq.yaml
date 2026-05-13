@@ -3,7 +3,7 @@ kind: Deployment
 
 metadata:
   name: rabbitmq
-  namespace: {{ .Values.namespace.messaging }}
+  namespace: {{ $.Release.Namespace }}
 
 spec:
   replicas: 1
@@ -56,7 +56,7 @@ kind: Service
 
 metadata:
   name: rabbitmq
-  namespace: {{ .Values.namespace.messaging }}
+  namespace: {{ $.Release.Namespace }}
 
 spec:
   selector:

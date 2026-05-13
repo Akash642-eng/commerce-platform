@@ -5,7 +5,7 @@ kind: Deployment
 
 metadata:
   name: {{ .name }}
-  namespace: {{ $.Values.namespace.backend }}
+  namespace: {{ $.Release.Namespace }}
 
 spec:
   replicas: {{ $.Values.replicaCount }}
@@ -46,7 +46,7 @@ kind: Service
 
 metadata:
   name: {{ .name }}
-  namespace: {{ $.Values.namespace.backend }}
+  namespace: {{ $.Release.Namespace }}
 
 spec:
   selector:

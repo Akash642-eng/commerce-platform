@@ -3,7 +3,7 @@ kind: PersistentVolumeClaim
 
 metadata:
   name: postgres-pvc
-  namespace: {{ .Values.namespace.database }}
+  namespace: {{ $.Release.Namespace }}
 
 spec:
   accessModes:
@@ -22,7 +22,7 @@ kind: PersistentVolumeClaim
 
 metadata:
   name: redis-pvc
-  namespace: {{ .Values.namespace.cache }}
+  namespace: {{ $.Release.Namespace }}
 
 spec:
   accessModes:
@@ -41,7 +41,7 @@ kind: PersistentVolumeClaim
 
 metadata:
   name: rabbitmq-pvc
-  namespace: {{ .Values.namespace.messaging }}
+  namespace: {{ $.Release.Namespace }}
 
 spec:
   accessModes:
@@ -60,7 +60,7 @@ kind: PersistentVolumeClaim
 
 metadata:
   name: grafana-pvc
-  namespace: {{ .Values.namespace.monitoring }}
+  namespace: {{ $.Release.Namespace }}
 
 spec:
   accessModes:
@@ -79,7 +79,7 @@ kind: PersistentVolumeClaim
 
 metadata:
   name: prometheus-pvc
-  namespace: {{ .Values.namespace.monitoring }}
+  namespace: {{ $.Release.Namespace }}
 
 spec:
   accessModes:

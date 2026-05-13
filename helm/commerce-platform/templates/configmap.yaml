@@ -3,7 +3,7 @@ kind: ConfigMap
 
 metadata:
   name: app-config
-  namespace: {{ .Values.namespace.backend }}
+  namespace: {{ $.Release.Namespace }}
 
 data:
   AUTH_SERVICE: "http://auth-service"
