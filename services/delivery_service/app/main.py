@@ -7,6 +7,8 @@ from .database import Base
 
 from .routes import delivery
 
+from shared.logging.logger import log_event
+
 
 app = FastAPI(
     title="Delivery Service"
@@ -20,6 +22,17 @@ Base.metadata.create_all(bind=engine)
 
 
 app.include_router(delivery.router)
+
+
+@app.on_event("startup")
+def startup_event():
+
+    log_event(
+        service="delivery-service",
+        event="startup",
+        trace_id="system",
+        message="Delivery Service started successfully"
+    )
 
 
 @app.get("/")

@@ -12,6 +12,8 @@ import threading
 from .rabbitmq_consumer import start_consumer
 from .release_consumer import start_release_consumer
 
+from shared.logging.logger import log_event
+
 
 app = FastAPI(
     title="Inventory Service"
@@ -25,6 +27,17 @@ Base.metadata.create_all(bind=engine)
 
 
 app.include_router(inventory.router)
+
+
+@app.on_event("startup")
+def startup_event():
+
+    log_event(
+        service="inventory-service",
+        event="startup",
+        trace_id="system",
+        message="Inventory Service started successfully"
+    )
 
 
 @app.get("/")

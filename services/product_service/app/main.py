@@ -8,6 +8,8 @@ from .database import Base
 from .routes import products
 from .routes import categories
 
+from shared.logging.logger import log_event
+
 
 app = FastAPI(
     title="Product Service"
@@ -22,6 +24,17 @@ Base.metadata.create_all(bind=engine)
 
 app.include_router(products.router)
 app.include_router(categories.router)
+
+
+@app.on_event("startup")
+def startup_event():
+
+    log_event(
+        service="product-service",
+        event="startup",
+        trace_id="system",
+        message="Product Service started successfully"
+    )
 
 
 @app.get("/")

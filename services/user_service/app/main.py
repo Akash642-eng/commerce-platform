@@ -8,7 +8,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from .database import Base
 from .database import engine
 
-from .logger import log_event
+from shared.logging.logger import log_event
 
 from .routes import users
 from .routes import auth
@@ -111,7 +111,9 @@ def readiness_probe():
             event="readiness_failed",
             trace_id="system",
             message="Readiness probe failed",
-            data={"error": str(e)},
+            data={
+                "error": str(e)
+            },
             level="ERROR"
         )
 

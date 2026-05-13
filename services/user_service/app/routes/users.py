@@ -3,8 +3,6 @@ from fastapi import Depends
 from fastapi import HTTPException
 from fastapi import status
 
-from fastapi.security import OAuth2PasswordRequestForm
-
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -12,58 +10,192 @@ from ..database import get_db
 from .. import models
 from .. import schemas
 
-from ..security import create_access_token
-from ..security import verify_password
+from ..security import get_current_user
+from ..security import hash_password
 
 
 router = APIRouter(
-    prefix="/auth",
-    tags=["Authentication"]
+    prefix="/users",
+    tags=["Users"]
 )
 
 
 @router.post(
-    "/login",
-    response_model=schemas.TokenResponse
+    "/",
+    response_model=schemas.UserResponse,
+    status_code=status.HTTP_201_CREATED
 )
-def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
+def create_user(
+    user: schemas.UserCreate,
+    db: Session = Depends(get_db)
+):
+
+    existing_user = db.query(
+        models.User
+    ).filter(
+        models.User.email == user.email
+    ).first()
+
+    if existing_user:
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already exists"
+        )
+
+    new_user = models.User(
+        name=user.name,
+        email=user.email,
+        hashed_password=hash_password(
+            user.password
+        )
+    )
+
+    db.add(new_user)
+
+    db.commit()
+
+    db.refresh(new_user)
+
+    return new_user
+
+
+@router.get(
+    "/",
+    response_model=list[schemas.UserResponse]
+)
+def get_users(
+    db: Session = Depends(get_db)
+):
+
+    users = db.query(
+        models.User
+    ).all()
+
+    return users
+
+
+@router.get(
+    "/me",
+    response_model=schemas.UserResponse
+)
+def get_my_profile(
+    current_user: models.User = Depends(
+        get_current_user
+    )
+):
+
+    return current_user
+
+
+@router.get(
+    "/{user_id}",
+    response_model=schemas.UserResponse
+)
+def get_user(
+    user_id: int,
     db: Session = Depends(get_db)
 ):
 
     user = db.query(
         models.User
     ).filter(
-        models.User.email == form_data.username
+        models.User.id == user_id
     ).first()
 
     if not user:
 
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
         )
 
-    valid_password = verify_password(
-        form_data.password,
-        user.hashed_password
-    )
+    return user
 
-    if not valid_password:
+
+@router.put(
+    "/{user_id}",
+    response_model=schemas.UserResponse
+)
+def update_user(
+    user_id: int,
+    updated_user: schemas.UserUpdate,
+    db: Session = Depends(get_db)
+):
+
+    user = db.query(
+        models.User
+    ).filter(
+        models.User.id == user_id
+    ).first()
+
+    if not user:
 
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
         )
 
-    access_token = create_access_token(
-        data={
-            "sub": user.email,
-            "user_id": user.id
-        }
-    )
+    if updated_user.name is not None:
+
+        user.name = updated_user.name
+
+    if updated_user.email is not None:
+
+        existing_email = db.query(
+            models.User
+        ).filter(
+            models.User.email == updated_user.email,
+            models.User.id != user_id
+        ).first()
+
+        if existing_email:
+
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already exists"
+            )
+
+        user.email = updated_user.email
+
+    if updated_user.password is not None:
+
+        user.hashed_password = hash_password(
+            updated_user.password
+        )
+
+    db.commit()
+
+    db.refresh(user)
+
+    return user
+
+
+@router.delete(
+    "/{user_id}"
+)
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+
+    user = db.query(
+        models.User
+    ).filter(
+        models.User.id == user_id
+    ).first()
+
+    if not user:
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    db.delete(user)
+
+    db.commit()
 
     return {
-        "access_token": access_token,
-        "token_type": "bearer"
+        "message": "User deleted successfully"
     }

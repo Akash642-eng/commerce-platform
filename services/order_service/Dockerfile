@@ -21,4 +21,4 @@ RUN chmod +x wait-for-db.sh || true
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "./wait-for-db.sh && uvicorn services.order_service.app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["./wait-for-db.sh"]

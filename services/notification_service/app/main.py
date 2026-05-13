@@ -11,6 +11,8 @@ from .consumer import start_consumer
 
 import threading
 
+from shared.logging.logger import log_event
+
 
 app = FastAPI(
     title="Notification Service"
@@ -28,6 +30,13 @@ app.include_router(notifications.router)
 
 @app.on_event("startup")
 def startup_event():
+
+    log_event(
+        service="notification-service",
+        event="startup",
+        trace_id="system",
+        message="Notification Service started successfully"
+    )
 
     thread = threading.Thread(
         target=start_consumer,

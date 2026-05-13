@@ -8,6 +8,14 @@ done
 
 echo "PostgreSQL started"
 
+echo "Waiting for rabbitmq..."
+
+while ! nc -z rabbitmq 5672; do
+  sleep 1
+done
+
+echo "RabbitMQ started"
+
 uvicorn services.notification_service.app.main:app \
   --host 0.0.0.0 \
   --port 8000

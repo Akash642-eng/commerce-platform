@@ -13,7 +13,7 @@ from .payment_consumer import start_payment_consumer
 from .payment_failed_consumer import start_failed_consumer
 from .inventory_consumer import start_inventory_consumer
 
-from .logger import log_event
+from shared.logging.logger import log_event
 
 
 app = FastAPI(
@@ -31,29 +31,14 @@ Base.metadata.create_all(bind=engine)
 app.include_router(orders.router)
 
 
-@app.get("/")
-def root():
-
-    return {
-        "service": "Order Service Running"
-    }
-
-
-@app.get("/health")
-def health():
-
-    return {
-        "status": "healthy"
-    }
-
-
-def start_all_consumers():
+@app.on_event("startup")
+def startup_event():
 
     log_event(
         service="order-service",
         event="startup",
         trace_id="system",
-        message="Starting all order-service consumers..."
+        message="Order Service started successfully"
     )
 
     threading.Thread(
@@ -72,7 +57,17 @@ def start_all_consumers():
     ).start()
 
 
-@app.on_event("startup")
-def startup_event():
+@app.get("/")
+def root():
 
-    start_all_consumers()
+    return {
+        "service": "Order Service Running"
+    }
+
+
+@app.get("/health")
+def health():
+
+    return {
+        "status": "healthy"
+    }

@@ -17,4 +17,4 @@ COPY . .
 
 RUN chmod +x wait-for-db.sh
 
-CMD ["uvicorn", "services.cart_service.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["./wait-for-db.sh"]

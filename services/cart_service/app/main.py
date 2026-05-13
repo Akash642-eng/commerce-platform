@@ -7,6 +7,8 @@ from .database import Base
 
 from .routes import cart
 
+from shared.logging.logger import log_event
+
 
 app = FastAPI(
     title="Cart Service"
@@ -20,6 +22,17 @@ Base.metadata.create_all(bind=engine)
 
 
 app.include_router(cart.router)
+
+
+@app.on_event("startup")
+def startup_event():
+
+    log_event(
+        service="cart-service",
+        event="startup",
+        trace_id="system",
+        message="Cart Service started successfully"
+    )
 
 
 @app.get("/")
