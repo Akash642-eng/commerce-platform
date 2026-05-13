@@ -5,11 +5,9 @@ import time
 
 from .logger import log_event
 
+from shared.config.settings import settings
 
-RABBITMQ_HOST = os.getenv(
-    "RABBITMQ_HOST",
-    "rabbitmq"
-)
+RABBITMQ_HOST = settings.RABBITMQ_HOST
 
 DLQ = "payment_dlq"
 

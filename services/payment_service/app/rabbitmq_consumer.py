@@ -8,16 +8,13 @@ import redis
 from .logger import log_event
 from .metrics import EVENTS_PROCESSED, EVENTS_FAILED
 
+from shared.config.settings import settings
 
-ENV = os.getenv("ENV", "dev")
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
+ENV = settings.ENV
 
-REDIS_HOST = os.getenv("REDIS_HOST", "redis")
-redis_client = redis.Redis(
-    host=REDIS_HOST,
-    port=6379,
-    decode_responses=True
-)
+RABBITMQ_HOST = settings.RABBITMQ_HOST
+
+REDIS_HOST = settings.REDIS_HOST
 
 MAX_RETRIES = 3
 

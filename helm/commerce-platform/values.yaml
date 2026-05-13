@@ -96,3 +96,6 @@ ingress:
     host: rabbitmq.local
     service: rabbitmq
     port: 15672
+
+secrets:
+  jwtSecret: "supersecretkey"

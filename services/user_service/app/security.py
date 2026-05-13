@@ -1,5 +1,3 @@
-import os
-
 from jose import jwt
 from jose import JWTError
 
@@ -13,6 +11,8 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from passlib.context import CryptContext
+
+from shared.config.settings import settings
 
 from .database import get_db
 
@@ -30,22 +30,11 @@ oauth2_scheme = OAuth2PasswordBearer(
 )
 
 
-SECRET_KEY = os.getenv(
-    "SECRET_KEY",
-    "supersecretkey"
-)
+SECRET_KEY = settings.SECRET_KEY
 
-ALGORITHM = os.getenv(
-    "ALGORITHM",
-    "HS256"
-)
+ALGORITHM = settings.ALGORITHM
 
-ACCESS_TOKEN_EXPIRE_MINUTES = int(
-    os.getenv(
-        "ACCESS_TOKEN_EXPIRE_MINUTES",
-        60
-    )
-)
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
 
 def hash_password(

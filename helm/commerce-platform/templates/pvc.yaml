@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+
+metadata:
+  name: postgres-pvc
+  namespace: {{ .Values.namespace.database }}
+
+spec:
+  accessModes:
+    - ReadWriteOnce
+
+  resources:
+    requests:
+      storage: {{ .Values.postgres.storage }}
+
+  storageClassName: standard
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+
+metadata:
+  name: redis-pvc
+  namespace: {{ .Values.namespace.cache }}
+
+spec:
+  accessModes:
+    - ReadWriteOnce
+
+  resources:
+    requests:
+      storage: {{ .Values.redis.storage }}
+
+  storageClassName: standard
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+
+metadata:
+  name: rabbitmq-pvc
+  namespace: {{ .Values.namespace.messaging }}
+
+spec:
+  accessModes:
+    - ReadWriteOnce
+
+  resources:
+    requests:
+      storage: {{ .Values.rabbitmq.storage }}
+
+  storageClassName: standard
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+
+metadata:
+  name: grafana-pvc
+  namespace: {{ .Values.namespace.monitoring }}
+
+spec:
+  accessModes:
+    - ReadWriteOnce
+
+  resources:
+    requests:
+      storage: {{ .Values.grafana.storage }}
+
+  storageClassName: standard
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+
+metadata:
+  name: prometheus-pvc
+  namespace: {{ .Values.namespace.monitoring }}
+
+spec:
+  accessModes:
+    - ReadWriteOnce
+
+  resources:
+    requests:
+      storage: {{ .Values.prometheus.storage }}
+
+  storageClassName: standard
