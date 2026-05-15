@@ -80,8 +80,7 @@ jobs:
             -t api-gateway \
             -f ./services/api_gateway/Dockerfile \
             .
-
-
+            
       # --------------------------------
       # BUILD AUTH SERVICE
       # --------------------------------
