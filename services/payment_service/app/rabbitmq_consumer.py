@@ -8,6 +8,7 @@ import redis
 from .logger import log_event
 from .metrics import EVENTS_PROCESSED, EVENTS_FAILED
 
+
 from shared.config.settings import settings
 
 ENV = settings.ENV
