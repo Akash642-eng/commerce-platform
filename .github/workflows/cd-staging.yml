@@ -36,82 +36,96 @@ jobs:
 
       # --------------------------------
       # BUILD IMAGES
+      # FIX: Use repo root (.) as build context and -f to point at the Dockerfile.
+      # The Dockerfiles use paths like COPY services/api_gateway/... which are
+      # relative to the repo root, not to the service subdirectory.
       # --------------------------------
       - name: Build API Gateway
         run: |
           docker build \
             -t api-gateway:staging \
-            ./services/api_gateway
+            -f ./services/api_gateway/Dockerfile \
+            .
 
 
       - name: Build Auth Service
         run: |
           docker build \
             -t auth-service:staging \
-            ./services/auth_service
+            -f ./services/auth_service/Dockerfile \
+            .
 
 
       - name: Build User Service
         run: |
           docker build \
             -t user-service:staging \
-            ./services/user_service
+            -f ./services/user_service/Dockerfile \
+            .
 
 
       - name: Build Product Service
         run: |
           docker build \
             -t product-service:staging \
-            ./services/product_service
+            -f ./services/product_service/Dockerfile \
+            .
 
 
       - name: Build Inventory Service
         run: |
           docker build \
             -t inventory-service:staging \
-            ./services/inventory_service
+            -f ./services/inventory_service/Dockerfile \
+            .
 
 
       - name: Build Cart Service
         run: |
           docker build \
             -t cart-service:staging \
-            ./services/cart_service
+            -f ./services/cart_service/Dockerfile \
+            .
 
 
       - name: Build Order Service
         run: |
           docker build \
             -t order-service:staging \
-            ./services/order_service
+            -f ./services/order_service/Dockerfile \
+            .
 
 
       - name: Build Payment Service
         run: |
           docker build \
             -t payment-service:staging \
-            ./services/payment_service
+            -f ./services/payment_service/Dockerfile \
+            .
 
 
       - name: Build Delivery Service
         run: |
           docker build \
             -t delivery-service:staging \
-            ./services/delivery_service
+            -f ./services/delivery_service/Dockerfile \
+            .
 
 
       - name: Build Notification Service
         run: |
           docker build \
             -t notification-service:staging \
-            ./services/notification_service
+            -f ./services/notification_service/Dockerfile \
+            .
 
 
       - name: Build Support Service
         run: |
           docker build \
             -t support-service:staging \
-            ./services/support_service
+            -f ./services/support_service/Dockerfile \
+            .
 
 
       # --------------------------------

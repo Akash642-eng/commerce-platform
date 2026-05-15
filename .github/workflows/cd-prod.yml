@@ -36,39 +36,42 @@ jobs:
 
       # --------------------------------
       # BUILD ALL SERVICES
+      # FIX: Use repo root (.) as build context and -f to point at the Dockerfile.
+      # The Dockerfiles use paths like COPY services/api_gateway/... which are
+      # relative to the repo root, not to the service subdirectory.
       # --------------------------------
       - name: Build API Gateway
-        run: docker build -t api-gateway:prod ./services/api_gateway
+        run: docker build -t api-gateway:prod -f ./services/api_gateway/Dockerfile .
 
       - name: Build Auth Service
-        run: docker build -t auth-service:prod ./services/auth_service
+        run: docker build -t auth-service:prod -f ./services/auth_service/Dockerfile .
 
       - name: Build User Service
-        run: docker build -t user-service:prod ./services/user_service
+        run: docker build -t user-service:prod -f ./services/user_service/Dockerfile .
 
       - name: Build Product Service
-        run: docker build -t product-service:prod ./services/product_service
+        run: docker build -t product-service:prod -f ./services/product_service/Dockerfile .
 
       - name: Build Inventory Service
-        run: docker build -t inventory-service:prod ./services/inventory_service
+        run: docker build -t inventory-service:prod -f ./services/inventory_service/Dockerfile .
 
       - name: Build Cart Service
-        run: docker build -t cart-service:prod ./services/cart_service
+        run: docker build -t cart-service:prod -f ./services/cart_service/Dockerfile .
 
       - name: Build Order Service
-        run: docker build -t order-service:prod ./services/order_service
+        run: docker build -t order-service:prod -f ./services/order_service/Dockerfile .
 
       - name: Build Payment Service
-        run: docker build -t payment-service:prod ./services/payment_service
+        run: docker build -t payment-service:prod -f ./services/payment_service/Dockerfile .
 
       - name: Build Delivery Service
-        run: docker build -t delivery-service:prod ./services/delivery_service
+        run: docker build -t delivery-service:prod -f ./services/delivery_service/Dockerfile .
 
       - name: Build Notification Service
-        run: docker build -t notification-service:prod ./services/notification_service
+        run: docker build -t notification-service:prod -f ./services/notification_service/Dockerfile .
 
       - name: Build Support Service
-        run: docker build -t support-service:prod ./services/support_service
+        run: docker build -t support-service:prod -f ./services/support_service/Dockerfile .
 
 
       # --------------------------------

@@ -70,12 +70,16 @@ jobs:
 
       # --------------------------------
       # BUILD API GATEWAY
+      # FIX: Use repo root (.) as build context and -f to point at the Dockerfile.
+      # The Dockerfiles use paths like COPY services/api_gateway/... which are
+      # relative to the repo root, not to the service subdirectory.
       # --------------------------------
       - name: Build API Gateway
         run: |
           docker build \
             -t api-gateway \
-            ./services/api_gateway
+            -f ./services/api_gateway/Dockerfile \
+            .
 
 
       # --------------------------------
@@ -85,7 +89,8 @@ jobs:
         run: |
           docker build \
             -t auth-service \
-            ./services/auth_service
+            -f ./services/auth_service/Dockerfile \
+            .
 
 
       # --------------------------------
@@ -95,7 +100,8 @@ jobs:
         run: |
           docker build \
             -t user-service \
-            ./services/user_service
+            -f ./services/user_service/Dockerfile \
+            .
 
 
       # --------------------------------
@@ -105,7 +111,8 @@ jobs:
         run: |
           docker build \
             -t product-service \
-            ./services/product_service
+            -f ./services/product_service/Dockerfile \
+            .
 
 
       # --------------------------------
@@ -115,7 +122,8 @@ jobs:
         run: |
           docker build \
             -t inventory-service \
-            ./services/inventory_service
+            -f ./services/inventory_service/Dockerfile \
+            .
 
 
       # --------------------------------
@@ -125,7 +133,8 @@ jobs:
         run: |
           docker build \
             -t cart-service \
-            ./services/cart_service
+            -f ./services/cart_service/Dockerfile \
+            .
 
 
       # --------------------------------
@@ -135,7 +144,8 @@ jobs:
         run: |
           docker build \
             -t order-service \
-            ./services/order_service
+            -f ./services/order_service/Dockerfile \
+            .
 
 
       # --------------------------------
@@ -145,7 +155,8 @@ jobs:
         run: |
           docker build \
             -t payment-service \
-            ./services/payment_service
+            -f ./services/payment_service/Dockerfile \
+            .
 
 
       # --------------------------------
@@ -155,7 +166,8 @@ jobs:
         run: |
           docker build \
             -t delivery-service \
-            ./services/delivery_service
+            -f ./services/delivery_service/Dockerfile \
+            .
 
 
       # --------------------------------
@@ -165,7 +177,8 @@ jobs:
         run: |
           docker build \
             -t notification-service \
-            ./services/notification_service
+            -f ./services/notification_service/Dockerfile \
+            .
 
 
       # --------------------------------
@@ -175,7 +188,8 @@ jobs:
         run: |
           docker build \
             -t support-service \
-            ./services/support_service
+            -f ./services/support_service/Dockerfile \
+            .
 
 
       # --------------------------------
