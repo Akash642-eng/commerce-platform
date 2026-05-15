@@ -1,5 +1,5 @@
 SERVICES = {
-    "auth": "http://auth-service.default.svc.cluster.local:8000",
+    "auth": "http://auth-service.backend.svc.cluster.local:8000",
     "users": "http://user-service.default.svc.cluster.local:8000",
     "products": "http://product-service.default.svc.cluster.local:8000",
     "inventory": "http://inventory-service.default.svc.cluster.local:8000",

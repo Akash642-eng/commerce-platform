@@ -1,23 +1,18 @@
-import pika
 import json
-import os
 import time
 
-from .logger import log_event
+import pika
 
 from shared.config.settings import settings
+
+from .logger import log_event
 
 RABBITMQ_HOST = settings.RABBITMQ_HOST
 
 DLQ = "payment_dlq"
 
 
-def callback(
-    ch,
-    method,
-    properties,
-    body
-):
+def callback(ch, method, properties, body):
 
     try:
 
@@ -35,12 +30,10 @@ def callback(
             trace_id=trace_id,
             message="MESSAGE IN DLQ",
             data=data,
-            level="ERROR"
+            level="ERROR",
         )
 
-        ch.basic_ack(
-            delivery_tag=method.delivery_tag
-        )
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except Exception as e:
 
@@ -50,7 +43,7 @@ def callback(
             trace_id="system",
             message="DLQ processing error",
             data={"error": str(e)},
-            level="ERROR"
+            level="ERROR",
         )
 
 
@@ -60,7 +53,7 @@ def start_dlq_consumer():
         service="payment-service",
         event="dlq_consumer_start",
         trace_id="system",
-        message="DLQ consumer started"
+        message="DLQ consumer started",
     )
 
     while True:
@@ -68,29 +61,22 @@ def start_dlq_consumer():
         try:
 
             connection = pika.BlockingConnection(
-                pika.ConnectionParameters(
-                    host=RABBITMQ_HOST
-                )
+                pika.ConnectionParameters(host=RABBITMQ_HOST)
             )
 
             channel = connection.channel()
 
-            channel.queue_declare(
-                queue=DLQ,
-                durable=True
-            )
+            channel.queue_declare(queue=DLQ, durable=True)
 
             channel.basic_consume(
-                queue=DLQ,
-                on_message_callback=callback,
-                auto_ack=False
+                queue=DLQ, on_message_callback=callback, auto_ack=False
             )
 
             log_event(
                 service="payment-service",
                 event="dlq_waiting",
                 trace_id="system",
-                message="Waiting for DLQ messages"
+                message="Waiting for DLQ messages",
             )
 
             channel.start_consuming()
@@ -103,7 +89,7 @@ def start_dlq_consumer():
                 trace_id="system",
                 message="DLQ consumer retry",
                 data={"error": str(e)},
-                level="ERROR"
+                level="ERROR",
             )
 
             time.sleep(5)

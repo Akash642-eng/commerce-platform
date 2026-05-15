@@ -9,12 +9,12 @@ RUN apt-get update && apt-get install -y \
     netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY services/product_service/requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN chmod +x wait-for-db.sh
+RUN chmod +x services/product_service/wait-for-db.sh
 
-CMD ["uvicorn", "services.product_service.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "services/product_service/wait-for-db.sh"]

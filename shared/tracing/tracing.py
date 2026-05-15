@@ -1,27 +1,26 @@
+import os
+
 from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import \
+    OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-
-import os
 
 
 def setup_tracing(app, service_name: str):
 
-    resource = Resource.create({
-        "service.name": service_name
-    })
+    resource = Resource.create({"service.name": service_name})
 
     provider = TracerProvider(resource=resource)
 
     exporter = OTLPSpanExporter(
         endpoint=os.getenv(
             "OTEL_EXPORTER_OTLP_ENDPOINT",
-            "http://jaeger-collector.observability.svc.cluster.local:4317"
+            "http://jaeger-collector.observability.svc.cluster.local:4317",
         ),
-        insecure=True
+        insecure=True,
     )
 
     processor = BatchSpanProcessor(exporter)

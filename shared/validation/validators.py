@@ -1,10 +1,7 @@
 from fastapi import HTTPException
 
 
-def validate_required_fields(
-    payload: dict,
-    required_fields: list
-):
+def validate_required_fields(payload: dict, required_fields: list):
 
     missing = []
 
@@ -17,6 +14,5 @@ def validate_required_fields(
     if missing:
 
         raise HTTPException(
-            status_code=400,
-            detail=f"Missing fields: {', '.join(missing)}"
+            status_code=400, detail=f"Missing fields: {', '.join(missing)}"
         )

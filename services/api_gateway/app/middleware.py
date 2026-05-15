@@ -1,11 +1,8 @@
 import time
 
 from fastapi import Request
-
-from starlette.middleware.base import BaseHTTPMiddleware
-
 from fastapi.responses import JSONResponse
-
+from starlette.middleware.base import BaseHTTPMiddleware
 
 REQUEST_LOG = {}
 
@@ -25,17 +22,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             REQUEST_LOG[client_ip] = []
 
         REQUEST_LOG[client_ip] = [
-            t for t in REQUEST_LOG[client_ip]
-            if current_time - t < WINDOW_SIZE
+            t for t in REQUEST_LOG[client_ip] if current_time - t < WINDOW_SIZE
         ]
 
         if len(REQUEST_LOG[client_ip]) >= RATE_LIMIT:
 
             return JSONResponse(
-                status_code=429,
-                content={
-                    "error": "Rate limit exceeded"
-                }
+                status_code=429, content={"error": "Rate limit exceeded"}
             )
 
         REQUEST_LOG[client_ip].append(current_time)

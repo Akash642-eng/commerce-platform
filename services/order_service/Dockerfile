@@ -10,15 +10,15 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY services/order_service/requirements.txt .
 
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN chmod +x wait-for-db.sh || true
+RUN chmod +x services/order_service/wait-for-db.sh
 
 EXPOSE 8000
 
-CMD ["./wait-for-db.sh"]
+CMD ["sh", "services/order_service/wait-for-db.sh"]

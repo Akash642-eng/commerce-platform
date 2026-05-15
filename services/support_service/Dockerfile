@@ -9,12 +9,12 @@ RUN apt-get update && apt-get install -y \
     netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY services/support_service/requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN chmod +x wait-for-db.sh
+RUN chmod +x services/support_service/wait-for-db.sh
 
-CMD ["sh", "./wait-for-db.sh"]
+CMD ["sh", "services/support_service/wait-for-db.sh"]

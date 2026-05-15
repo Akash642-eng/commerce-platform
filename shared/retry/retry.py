@@ -1,11 +1,7 @@
 import time
 
 
-def retry_operation(
-    fn,
-    retries=3,
-    delay=2
-):
+def retry_operation(fn, retries=3, delay=2):
 
     last_error = None
 

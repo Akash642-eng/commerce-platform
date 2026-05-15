@@ -1,8 +1,7 @@
-from pydantic import BaseModel
-
 from datetime import datetime
-
 from typing import Optional
+
+from pydantic import BaseModel
 
 
 class DeliveryAgentCreate(BaseModel):
@@ -14,9 +13,7 @@ class DeliveryAgentCreate(BaseModel):
     vehicle_number: str
 
 
-class DeliveryAgentResponse(
-    DeliveryAgentCreate
-):
+class DeliveryAgentResponse(DeliveryAgentCreate):
 
     id: int
 

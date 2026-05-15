@@ -1,40 +1,24 @@
+from datetime import datetime, timedelta
+
 import jwt
 
-from datetime import datetime
-from datetime import timedelta
-
 from ..config import settings
-
 
 SECRET_KEY = settings.SECRET_KEY
 
 ALGORITHM = settings.ALGORITHM
 
 
-def create_token(
-    user_id: str
-):
+def create_token(user_id: str):
 
     payload = {
         "user_id": user_id,
-        "exp": datetime.utcnow() + timedelta(
-            hours=settings.ACCESS_TOKEN_EXPIRE_HOURS
-        )
+        "exp": datetime.utcnow() + timedelta(hours=settings.ACCESS_TOKEN_EXPIRE_HOURS),
     }
 
-    return jwt.encode(
-        payload,
-        SECRET_KEY,
-        algorithm=ALGORITHM
-    )
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def decode_token(
-    token: str
-):
+def decode_token(token: str):
 
-    return jwt.decode(
-        token,
-        SECRET_KEY,
-        algorithms=[ALGORITHM]
-    )
+    return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])

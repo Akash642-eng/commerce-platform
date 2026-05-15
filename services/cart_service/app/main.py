@@ -1,18 +1,12 @@
 from fastapi import FastAPI
-
 from prometheus_fastapi_instrumentator import Instrumentator
-
-from .database import engine
-from .database import Base
-
-from .routes import cart
 
 from shared.logging.logger import log_event
 
+from .database import Base, engine
+from .routes import cart
 
-app = FastAPI(
-    title="Cart Service"
-)
+app = FastAPI(title="Cart Service")
 
 
 Instrumentator().instrument(app).expose(app)
@@ -31,21 +25,17 @@ def startup_event():
         service="cart-service",
         event="startup",
         trace_id="system",
-        message="Cart Service started successfully"
+        message="Cart Service started successfully",
     )
 
 
 @app.get("/")
 def root():
 
-    return {
-        "service": "Cart Service Running"
-    }
+    return {"service": "Cart Service Running"}
 
 
 @app.get("/health")
 def health():
 
-    return {
-        "status": "healthy"
-    }
+    return {"status": "healthy"}

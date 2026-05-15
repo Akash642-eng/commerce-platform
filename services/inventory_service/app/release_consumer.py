@@ -1,12 +1,11 @@
-import pika
 import json
-import os
 import time
 
-from .logger import log_event
-
+import pika
 
 from shared.config.settings import settings
+
+from .logger import log_event
 
 RABBITMQ_HOST = settings.RABBITMQ_HOST
 
@@ -19,9 +18,7 @@ def get_connection():
 
             return pika.BlockingConnection(
                 pika.ConnectionParameters(
-                    host=RABBITMQ_HOST,
-                    heartbeat=600,
-                    blocked_connection_timeout=300
+                    host=RABBITMQ_HOST, heartbeat=600, blocked_connection_timeout=300
                 )
             )
 
@@ -32,29 +29,19 @@ def get_connection():
                 "SYSTEM",
                 "RabbitMQ release connection failed",
                 {},
-                level="ERROR"
+                level="ERROR",
             )
 
             time.sleep(5)
 
 
-def callback(
-    ch,
-    method,
-    properties,
-    body
-):
+def callback(ch, method, properties, body):
 
     try:
 
         data = json.loads(body)
 
-        log_event(
-            "inventory-service",
-            "SYSTEM",
-            "Inventory release received",
-            data
-        )
+        log_event("inventory-service", "SYSTEM", "Inventory release received", data)
 
         time.sleep(1)
 
@@ -62,12 +49,10 @@ def callback(
             "inventory-service",
             "SYSTEM",
             f"Stock released for order {data['order_id']}",
-            {}
+            {},
         )
 
-        ch.basic_ack(
-            delivery_tag=method.delivery_tag
-        )
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except Exception as e:
 
@@ -75,21 +60,14 @@ def callback(
             "inventory-service",
             "SYSTEM",
             "Release consumer error",
-            {
-                "error": str(e)
-            },
-            level="ERROR"
+            {"error": str(e)},
+            level="ERROR",
         )
 
 
 def start_release_consumer():
 
-    log_event(
-        "inventory-service",
-        "SYSTEM",
-        "Inventory release consumer started",
-        {}
-    )
+    log_event("inventory-service", "SYSTEM", "Inventory release consumer started", {})
 
     while True:
 
@@ -99,22 +77,14 @@ def start_release_consumer():
 
             channel = connection.channel()
 
-            channel.queue_declare(
-                queue="inventory_release",
-                durable=True
-            )
+            channel.queue_declare(queue="inventory_release", durable=True)
 
             channel.basic_consume(
-                queue="inventory_release",
-                on_message_callback=callback,
-                auto_ack=False
+                queue="inventory_release", on_message_callback=callback, auto_ack=False
             )
 
             log_event(
-                "inventory-service",
-                "SYSTEM",
-                "Waiting for inventory_release",
-                {}
+                "inventory-service", "SYSTEM", "Waiting for inventory_release", {}
             )
 
             channel.start_consuming()
@@ -125,10 +95,8 @@ def start_release_consumer():
                 "inventory-service",
                 "SYSTEM",
                 "Release consumer crash",
-                {
-                    "error": str(e)
-                },
-                level="ERROR"
+                {"error": str(e)},
+                level="ERROR",
             )
 
             time.sleep(5)

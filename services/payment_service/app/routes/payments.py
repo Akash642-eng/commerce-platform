@@ -1,27 +1,16 @@
-from fastapi import APIRouter
-from fastapi import Depends
-
-from sqlalchemy.orm import Session
-
-from ..database import get_db
-
-from .. import models
-from .. import schemas
-
 import uuid
 
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
-router = APIRouter(
-    prefix="/payments",
-    tags=["Payments"]
-)
+from .. import models, schemas
+from ..database import get_db
+
+router = APIRouter(prefix="/payments", tags=["Payments"])
 
 
 @router.post("/")
-def create_payment(
-    payment: schemas.PaymentCreate,
-    db: Session = Depends(get_db)
-):
+def create_payment(payment: schemas.PaymentCreate, db: Session = Depends(get_db)):
 
     txn_id = str(uuid.uuid4())
 
@@ -30,7 +19,7 @@ def create_payment(
         payment_method=payment.payment_method,
         payment_status="SUCCESS",
         amount=payment.amount,
-        transaction_id=txn_id
+        transaction_id=txn_id,
     )
 
     db.add(new_payment)
@@ -42,14 +31,11 @@ def create_payment(
     txn = models.Transaction(
         payment_id=new_payment.id,
         gateway="FAKE_GATEWAY",
-        gateway_response="Payment Successful"
+        gateway_response="Payment Successful",
     )
 
     db.add(txn)
 
     db.commit()
 
-    return {
-        "payment_id": new_payment.id,
-        "status": "SUCCESS"
-    }
+    return {"payment_id": new_payment.id, "status": "SUCCESS"}

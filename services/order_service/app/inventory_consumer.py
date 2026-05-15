@@ -1,14 +1,14 @@
-import pika
 import json
-import os
 import time
-from .database import SessionLocal
-from .models import Order
-from .state_machine import can_transition
 
-from .logger import log_event
+import pika
 
 from shared.config.settings import settings
+
+from .database import SessionLocal
+from .logger import log_event
+from .models import Order
+from .state_machine import can_transition
 
 RABBITMQ_HOST = settings.RABBITMQ_HOST
 
@@ -33,7 +33,13 @@ def callback(ch, method, properties, body):
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except Exception as e:
-        log_event("order-service", "SYSTEM", "Error processing inventory event", {"error": str(e)}, level="ERROR")
+        log_event(
+            "order-service",
+            "SYSTEM",
+            "Error processing inventory event",
+            {"error": str(e)},
+            level="ERROR",
+        )
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     finally:
@@ -56,13 +62,21 @@ def start_inventory_consumer():
             channel.basic_consume(
                 queue="inventory_reserved_order",
                 on_message_callback=callback,
-                auto_ack=False
+                auto_ack=False,
             )
 
-            log_event("order-service", "SYSTEM", "Waiting for inventory_reserved_order...", {})
+            log_event(
+                "order-service", "SYSTEM", "Waiting for inventory_reserved_order...", {}
+            )
 
             channel.start_consuming()
 
         except Exception as e:
-            log_event("order-service", "SYSTEM", "Consumer retry", {"error": str(e)}, level="ERROR")
+            log_event(
+                "order-service",
+                "SYSTEM",
+                "Consumer retry",
+                {"error": str(e)},
+                level="ERROR",
+            )
             time.sleep(5)

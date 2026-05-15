@@ -2,16 +2,10 @@ ALLOWED_TRANSITIONS = {
     "CREATED": ["RESERVED", "FAILED"],
     "RESERVED": ["PAID", "FAILED"],
     "PAID": [],
-    "FAILED": []
+    "FAILED": [],
 }
 
 
-def can_transition(
-    current,
-    new
-):
+def can_transition(current, new):
 
-    return new in ALLOWED_TRANSITIONS.get(
-        current,
-        []
-    )
+    return new in ALLOWED_TRANSITIONS.get(current, [])

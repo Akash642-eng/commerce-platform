@@ -1,9 +1,7 @@
-from pydantic import BaseModel
-from pydantic import Field
-
+from datetime import datetime
 from typing import List
 
-from datetime import datetime
+from pydantic import BaseModel, Field
 
 
 class CartItemCreate(BaseModel):

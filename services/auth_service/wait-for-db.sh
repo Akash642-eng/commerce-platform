@@ -8,6 +8,6 @@ done
 
 echo "PostgreSQL started"
 
-uvicorn app.main:app \
+uvicorn services.auth_service.app.main:app \
   --host 0.0.0.0 \
   --port 8000

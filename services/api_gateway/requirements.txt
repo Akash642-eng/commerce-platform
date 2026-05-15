@@ -4,6 +4,8 @@ httpx
 redis
 requests
 prometheus-client
+python-dotenv
+
 
 opentelemetry-api
 opentelemetry-sdk
