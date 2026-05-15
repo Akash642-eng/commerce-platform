@@ -4,8 +4,7 @@ metadata:
   name: app-config
   namespace: backend
 data:
-  # Microservices
-  AUTH_SERVICE: "http://auth-service.default.svc.cluster.local:8000"
+  AUTH_SERVICE: "http://auth-service.backend.svc.cluster.local:8000"
   USER_SERVICE: "http://user-service.default.svc.cluster.local:8000"
   PRODUCT_SERVICE: "http://product-service.default.svc.cluster.local:8000"
   INVENTORY_SERVICE: "http://inventory-service.default.svc.cluster.local:8000"
@@ -15,8 +14,6 @@ data:
   DELIVERY_SERVICE: "http://delivery-service.default.svc.cluster.local:8000"
   NOTIFICATION_SERVICE: "http://notification-service.default.svc.cluster.local:8000"
   SUPPORT_SERVICE: "http://support-service.default.svc.cluster.local:8000"
-  
-  # Infrastructure Infrastructure
   DATABASE_URL: "postgresql://commerce:commerce@postgres.database.svc.cluster.local:5432/commerce_db"
   REDIS_HOST: "redis.cache.svc.cluster.local"
   RABBITMQ_HOST: "rabbitmq.messaging.svc.cluster.local"
