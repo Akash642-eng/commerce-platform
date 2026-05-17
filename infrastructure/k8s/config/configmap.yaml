@@ -2,17 +2,25 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: app-config
+  namespace: default           # FIX Bug#5: this is the configmap for default-namespace services
 data:
+  # FIX Bug#5: all URLs must use full cluster DNS — bare hostnames like
+  # http://order-service:8000 only resolve within the same namespace accidentally.
+  # Full FQDN guarantees correct resolution regardless of calling service's namespace.
   DATABASE_URL: postgresql://commerce:commerce@postgres.database.svc.cluster.local:5432/commerce_db
   REDIS_HOST: redis.cache.svc.cluster.local
   RABBITMQ_HOST: rabbitmq.messaging.svc.cluster.local
+
+  # Auth lives in 'backend' namespace — must use full FQDN from default-namespace callers
   AUTH_SERVICE: http://auth-service.backend.svc.cluster.local:8000
-  ORDER_SERVICE: http://order-service:8000
-  USER_SERVICE: http://user-service:8000
-  PRODUCT_SERVICE: http://product-service:8000
-  INVENTORY_SERVICE: http://inventory-service:8000
-  PAYMENT_SERVICE: http://payment-service:8000
-  CART_SERVICE: http://cart-service:8000
-  DELIVERY_SERVICE: http://delivery-service:8000
-  NOTIFICATION_SERVICE: http://notification-service:8000
-  SUPPORT_SERVICE: http://support-service:8000
+
+  # All other services live in 'default' namespace
+  ORDER_SERVICE: http://order-service.default.svc.cluster.local:8000
+  USER_SERVICE: http://user-service.default.svc.cluster.local:8000
+  PRODUCT_SERVICE: http://product-service.default.svc.cluster.local:8000
+  INVENTORY_SERVICE: http://inventory-service.default.svc.cluster.local:8000
+  PAYMENT_SERVICE: http://payment-service.default.svc.cluster.local:8000
+  CART_SERVICE: http://cart-service.default.svc.cluster.local:8000
+  DELIVERY_SERVICE: http://delivery-service.default.svc.cluster.local:8000
+  NOTIFICATION_SERVICE: http://notification-service.default.svc.cluster.local:8000
+  SUPPORT_SERVICE: http://support-service.default.svc.cluster.local:8000
