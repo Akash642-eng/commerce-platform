@@ -16,6 +16,9 @@ done
 
 echo "RabbitMQ started"
 
-uvicorn services.notification_service.app.main:app \
+echo "Starting notification-service..."
+
+# FIX Bug#4: full dotted module path â€” build context is repo root, so /app/services/notification_service/app/main.py
+exec uvicorn services.notification_service.app.main:app \
   --host 0.0.0.0 \
   --port 8000
