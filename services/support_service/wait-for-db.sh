@@ -8,6 +8,9 @@ done
 
 echo "PostgreSQL started"
 
-uvicorn services.support_service.app.main:app \
+echo "Starting support-service..."
+
+# FIX Bug#4: full dotted module path â€” build context is repo root, so /app/services/support_service/app/main.py
+exec uvicorn services.support_service.app.main:app \
   --host 0.0.0.0 \
   --port 8000
