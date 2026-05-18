@@ -3,6 +3,7 @@ kind: Ingress
 
 metadata:
   name: product-service-ingress
+  namespace: default
 
 spec:
   ingressClassName: nginx

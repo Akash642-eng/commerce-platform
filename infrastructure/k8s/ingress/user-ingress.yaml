@@ -3,6 +3,7 @@ kind: Ingress
 
 metadata:
   name: user-service-ingress
+  namespace: default
 
 spec:
   ingressClassName: nginx
@@ -21,3 +22,4 @@ spec:
 
                 port:
                   number: 8000
+  

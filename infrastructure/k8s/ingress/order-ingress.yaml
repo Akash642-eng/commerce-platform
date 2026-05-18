@@ -3,7 +3,8 @@ kind: Ingress
 
 metadata:
   name: order-service-ingress
-
+  namespace: default
+  
 spec:
   ingressClassName: nginx
 

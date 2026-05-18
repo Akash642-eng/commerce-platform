@@ -3,7 +3,7 @@ kind: Ingress
 
 metadata:
   name: cart-service-ingress
-
+  namespace: default
 spec:
   ingressClassName: nginx
 
