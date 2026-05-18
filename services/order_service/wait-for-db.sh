@@ -16,8 +16,9 @@ done
 
 echo "RabbitMQ started"
 
-echo "Starting service..."
+echo "Starting order-service..."
 
-uvicorn services.order_service.app.main:app \
+# FIX Bug#4: full dotted module path â€” build context is repo root, so /app/services/order_service/app/main.py
+exec uvicorn services.order_service.app.main:app \
   --host 0.0.0.0 \
   --port 8000
