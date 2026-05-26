@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: user-service
-  namespace: default          # FIX Bug#1: explicit namespace
+  namespace: backend           
 spec:
   replicas: 1
   selector:
@@ -50,9 +50,9 @@ apiVersion: v1
 kind: Service
 metadata:
   name: user-service
-  namespace: default            # FIX Bug#1: explicit namespace
+  namespace: backend           
 spec:
-  type: ClusterIP               # FIX Bug#2: was NodePort
+  type: ClusterIP               
   selector:
     app: user-service
   ports:

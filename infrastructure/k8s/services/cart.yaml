@@ -1,45 +1,60 @@
 apiVersion: apps/v1
 kind: Deployment
+
 metadata:
   name: cart-service
-  namespace: default          # FIX Bug#1: explicit namespace
+  namespace: backend
+  labels:
+    app: cart-service
+
 spec:
   replicas: 1
+
   selector:
     matchLabels:
       app: cart-service
+
   template:
     metadata:
       labels:
         app: cart-service
+
     spec:
       containers:
         - name: cart-service
+
           image: cart-service:v2
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
+
           ports:
             - containerPort: 8000
+
           envFrom:
             - configMapRef:
                 name: app-config
+
             - secretRef:
                 name: app-secret
+
           resources:
             requests:
               cpu: "100m"
               memory: "128Mi"
+
             limits:
               cpu: "250m"
               memory: "256Mi"
+
           livenessProbe:
             httpGet:
-              path: /health      # FIX Bug#6: was /
+              path: /health
               port: 8000
             initialDelaySeconds: 10
             periodSeconds: 10
+
           readinessProbe:
             httpGet:
-              path: /health      # FIX Bug#6: was /
+              path: /health
               port: 8000
             initialDelaySeconds: 5
             periodSeconds: 5
@@ -48,13 +63,19 @@ spec:
 
 apiVersion: v1
 kind: Service
+
 metadata:
   name: cart-service
-  namespace: default            # FIX Bug#1: explicit namespace
+  namespace: backend
+  labels:
+    app: cart-service
+
 spec:
-  type: ClusterIP               # FIX Bug#2: was NodePort
+  type: ClusterIP
+
   selector:
     app: cart-service
+
   ports:
     - port: 8000
       targetPort: 8000
