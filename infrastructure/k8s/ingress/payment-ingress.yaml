@@ -3,7 +3,7 @@ kind: Ingress
 
 metadata:
   name: payment-service-ingress
-  namespace: default
+  namespace: backend
 
 spec:
   ingressClassName: nginx
