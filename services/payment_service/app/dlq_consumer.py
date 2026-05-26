@@ -4,6 +4,11 @@ import time
 import pika
 
 from shared.config.settings import settings
+from shared.metrics.metrics import (
+    DLQ_COUNT,
+    RABBITMQ_CONSUMED,
+    RABBITMQ_DLQ,
+)
 
 from .logger import log_event
 
@@ -23,6 +28,21 @@ def callback(ch, method, properties, body):
             if properties and properties.headers
             else "unknown"
         )
+
+        RABBITMQ_CONSUMED.labels(
+            service="payment-service",
+            queue=DLQ,
+        ).inc()
+
+        RABBITMQ_DLQ.labels(
+            service="payment-service",
+            queue=DLQ,
+        ).inc()
+
+        DLQ_COUNT.labels(
+            service="payment-service",
+            event="payment_dlq_message",
+        ).inc()
 
         log_event(
             service="payment-service",
@@ -61,15 +81,22 @@ def start_dlq_consumer():
         try:
 
             connection = pika.BlockingConnection(
-                pika.ConnectionParameters(host=RABBITMQ_HOST)
+                pika.ConnectionParameters(
+                    host=RABBITMQ_HOST
+                )
             )
 
             channel = connection.channel()
 
-            channel.queue_declare(queue=DLQ, durable=True)
+            channel.queue_declare(
+                queue=DLQ,
+                durable=True,
+            )
 
             channel.basic_consume(
-                queue=DLQ, on_message_callback=callback, auto_ack=False
+                queue=DLQ,
+                on_message_callback=callback,
+                auto_ack=False,
             )
 
             log_event(

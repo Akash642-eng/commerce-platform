@@ -1,13 +1,26 @@
 import json
 import random
 import time
+
 import pika
 import redis as redis_lib
 
-from .logger import log_event
-from .metrics import EVENTS_FAILED, EVENTS_PROCESSED
-
 from shared.config.settings import settings
+from shared.metrics.metrics import (
+    DLQ_COUNT,
+    EVENTS_FAILED,
+    EVENTS_PROCESSED,
+    PAYMENT_FAILURE,
+    PAYMENT_SUCCESS,
+    RETRY_COUNT,
+    RABBITMQ_CONSUMED,
+    RABBITMQ_PUBLISHED,
+    RABBITMQ_FAILED,
+    RABBITMQ_RETRY,
+    RABBITMQ_DLQ,
+)
+
+from .logger import log_event
 
 ENV = settings.ENV
 
@@ -15,7 +28,11 @@ RABBITMQ_HOST = settings.RABBITMQ_HOST
 
 REDIS_HOST = settings.REDIS_HOST
 
-redis_client = redis_lib.Redis(host=REDIS_HOST, port=6379, decode_responses=True)
+redis_client = redis_lib.Redis(
+    host=REDIS_HOST,
+    port=6379,
+    decode_responses=True,
+)
 
 MAX_RETRIES = 3
 
@@ -25,16 +42,22 @@ DLQ = "payment_dlq"
 
 
 def get_connection():
+
     return pika.BlockingConnection(
         pika.ConnectionParameters(
-            host=RABBITMQ_HOST, heartbeat=600, blocked_connection_timeout=300
+            host=RABBITMQ_HOST,
+            heartbeat=600,
+            blocked_connection_timeout=300,
         )
     )
 
 
 def setup_queues(channel):
 
-    channel.queue_declare(queue=MAIN_QUEUE, durable=True)
+    channel.queue_declare(
+        queue=MAIN_QUEUE,
+        durable=True,
+    )
 
     channel.queue_declare(
         queue=RETRY_QUEUE,
@@ -46,11 +69,20 @@ def setup_queues(channel):
         },
     )
 
-    channel.queue_declare(queue=DLQ, durable=True)
+    channel.queue_declare(
+        queue=DLQ,
+        durable=True,
+    )
 
-    channel.queue_declare(queue="payment_completed", durable=True)
+    channel.queue_declare(
+        queue="payment_completed",
+        durable=True,
+    )
 
-    channel.queue_declare(queue="payment_failed", durable=True)
+    channel.queue_declare(
+        queue="payment_failed",
+        durable=True,
+    )
 
 
 def publish(queue, message, trace_id, headers=None):
@@ -63,11 +95,19 @@ def publish(queue, message, trace_id, headers=None):
 
     final_headers["x-trace-id"] = trace_id
 
+    RABBITMQ_PUBLISHED.labels(
+        service="payment-service",
+        queue=queue,
+    ).inc()
+
     channel.basic_publish(
         exchange="",
         routing_key=queue,
         body=json.dumps(message),
-        properties=pika.BasicProperties(delivery_mode=2, headers=final_headers),
+        properties=pika.BasicProperties(
+            delivery_mode=2,
+            headers=final_headers,
+        ),
     )
 
     connection.close()
@@ -79,19 +119,32 @@ def publish_payment_event(data, trace_id):
 
     if is_success:
 
-        event = {"version": "v1", "order_id": data["order_id"], "status": "SUCCESS"}
+        event = {
+            "version": "v1",
+            "order_id": data["order_id"],
+            "status": "SUCCESS",
+        }
 
         queue = "payment_completed"
 
     else:
 
-        event = {"version": "v1", "order_id": data["order_id"], "status": "FAILED"}
+        event = {
+            "version": "v1",
+            "order_id": data["order_id"],
+            "status": "FAILED",
+        }
 
         queue = "payment_failed"
 
     publish(queue, event, trace_id)
 
-    log_event("payment-service", trace_id, f"Sent {queue}", event)
+    log_event(
+        "payment-service",
+        trace_id,
+        f"Sent {queue}",
+        event,
+    )
 
 
 def callback(ch, method, properties, body):
@@ -106,15 +159,28 @@ def callback(ch, method, properties, body):
 
         trace_id = headers.get("x-trace-id", "unknown")
 
+        RABBITMQ_CONSUMED.labels(
+            service="payment-service",
+            queue=MAIN_QUEUE,
+        ).inc()
+
         retry_count = headers.get("x-retry", 0)
 
         event_id = f"payment:{data['order_id']}"
 
         if redis_client.get(event_id):
 
-            EVENTS_FAILED.labels("payment-service", "duplicate_event").inc()
+            EVENTS_FAILED.labels(
+                service="payment-service",
+                event="duplicate_event",
+            ).inc()
 
-            log_event("payment-service", trace_id, "Duplicate skipped", data)
+            log_event(
+                "payment-service",
+                trace_id,
+                "Duplicate skipped",
+                data,
+            )
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -130,21 +196,56 @@ def callback(ch, method, properties, body):
         if data["order_id"] % 5 == 0:
             raise Exception("Simulated payment failure")
 
+        start_time = time.time()
+
         time.sleep(1 if ENV == "dev" else 0.5)
 
-        redis_client.set(event_id, "1", ex=3600)
+        processing_time = time.time() - start_time
+
+        redis_client.set(
+            event_id,
+            "1",
+            ex=3600,
+        )
 
         publish_payment_event(data, trace_id)
 
-        EVENTS_PROCESSED.labels("payment-service", "payment_success").inc()
+        PAYMENT_SUCCESS.labels(
+            service="payment-service",
+        ).inc()
+
+        EVENTS_PROCESSED.labels(
+            service="payment-service",
+            event="payment_success",
+        ).inc()
+
+        log_event(
+            "payment-service",
+            trace_id,
+            "Payment processed",
+            {
+                "order_id": data["order_id"],
+                "processing_time_seconds": processing_time,
+            },
+        )
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
-        log_event("payment-service", trace_id, "Payment processed", data)
-
     except Exception as e:
 
-        EVENTS_FAILED.labels("payment-service", "payment_failed").inc()
+        PAYMENT_FAILURE.labels(
+            service="payment-service",
+        ).inc()
+
+        EVENTS_FAILED.labels(
+            service="payment-service",
+            event="payment_failed",
+        ).inc()
+
+        RABBITMQ_FAILED.labels(
+            service="payment-service",
+            queue=MAIN_QUEUE,
+        ).inc()
 
         log_event(
             "payment-service",
@@ -160,26 +261,58 @@ def callback(ch, method, properties, body):
 
         if retry_count < MAX_RETRIES:
 
+            RETRY_COUNT.labels(
+                service="payment-service",
+                event="payment_retry",
+            ).inc()
+
+            RABBITMQ_RETRY.labels(
+                service="payment-service",
+                queue=RETRY_QUEUE,
+            ).inc()
+
             new_headers = headers.copy()
 
             new_headers["x-retry"] = retry_count + 1
 
             new_headers["x-trace-id"] = trace_id
 
-            publish(RETRY_QUEUE, json.loads(body), trace_id, headers=new_headers)
+            publish(
+                RETRY_QUEUE,
+                json.loads(body),
+                trace_id,
+                headers=new_headers,
+            )
 
         else:
 
-            EVENTS_FAILED.labels("payment-service", "dlq_sent").inc()
+            DLQ_COUNT.labels(
+                service="payment-service",
+                event="payment_dlq",
+            ).inc()
 
-            publish(DLQ, json.loads(body), trace_id, headers=headers)
+            RABBITMQ_DLQ.labels(
+                service="payment-service",
+                queue=DLQ,
+            ).inc()
+
+            publish(
+                DLQ,
+                json.loads(body),
+                trace_id,
+                headers=headers,
+            )
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
 def start_consumer():
 
-    log_event("payment-service", "SYSTEM", f"Payment consumer started ({ENV})")
+    log_event(
+        "payment-service",
+        "SYSTEM",
+        f"Payment consumer started ({ENV})",
+    )
 
     while True:
 
@@ -194,11 +327,15 @@ def start_consumer():
             channel.basic_qos(prefetch_count=1)
 
             channel.basic_consume(
-                queue=MAIN_QUEUE, on_message_callback=callback, auto_ack=False
+                queue=MAIN_QUEUE,
+                on_message_callback=callback,
+                auto_ack=False,
             )
 
             log_event(
-                "payment-service", "SYSTEM", "Waiting for inventory_reserved_payment"
+                "payment-service",
+                "SYSTEM",
+                "Waiting for inventory_reserved_payment",
             )
 
             channel.start_consuming()
