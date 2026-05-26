@@ -15,12 +15,12 @@ data:
   AUTH_SERVICE: http://auth-service.backend.svc.cluster.local:8000
 
   # All other services live in 'default' namespace
-  ORDER_SERVICE: http://order-service.default.svc.cluster.local:8000
-  USER_SERVICE: http://user-service.default.svc.cluster.local:8000
-  PRODUCT_SERVICE: http://product-service.default.svc.cluster.local:8000
-  INVENTORY_SERVICE: http://inventory-service.default.svc.cluster.local:8000
-  PAYMENT_SERVICE: http://payment-service.default.svc.cluster.local:8000
-  CART_SERVICE: http://cart-service.default.svc.cluster.local:8000
-  DELIVERY_SERVICE: http://delivery-service.default.svc.cluster.local:8000
-  NOTIFICATION_SERVICE: http://notification-service.default.svc.cluster.local:8000
-  SUPPORT_SERVICE: http://support-service.default.svc.cluster.local:8000
+  ORDER_SERVICE: http://order-service.backend.svc.cluster.local:8000
+  USER_SERVICE: http://user-service.backend.svc.cluster.local:8000
+  PRODUCT_SERVICE: http://product-service.backend.svc.cluster.local:8000
+  INVENTORY_SERVICE: http://inventory-service.backend.svc.cluster.local:8000
+  PAYMENT_SERVICE: http://payment-service.backend.svc.cluster.local:8000
+  CART_SERVICE: http://cart-service.backend.svc.cluster.local:8000
+  DELIVERY_SERVICE: http://delivery-service.backend.svc.cluster.local:8000
+  NOTIFICATION_SERVICE: http://notification-backend.default.svc.cluster.local:8000
+  SUPPORT_SERVICE: http://support-service.backend.svc.cluster.local:8000
