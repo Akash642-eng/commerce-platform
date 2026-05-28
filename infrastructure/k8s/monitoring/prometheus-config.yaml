@@ -46,6 +46,21 @@ data:
         metrics_path: /metrics
         static_configs:
           - targets: ['payment-service.backend.svc.cluster.local:8000']
+          
+      - job_name: 'payment-service-api'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['payment-service.backend.svc.cluster.local:8000']
+
+      - job_name: 'payment-consumer'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['payment-service.backend.svc.cluster.local:8011']
+
+      - job_name: 'payment-dlq-consumer'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['payment-service.backend.svc.cluster.local:8012']
 
       - job_name: 'delivery-service'
         metrics_path: /metrics
