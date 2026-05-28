@@ -94,6 +94,8 @@ services:
     container_name: payment-service
     ports:
       - "8007:8000"
+      - "8011:8011"
+      - "8012:8012"
     depends_on:
       - postgres
       - rabbitmq
