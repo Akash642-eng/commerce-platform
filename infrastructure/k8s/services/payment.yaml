@@ -1,46 +1,64 @@
 apiVersion: apps/v1
 kind: Deployment
+
 metadata:
   name: payment-service
-  namespace: backend            # FIX Bug#1: explicit namespace
+  namespace: backend
+
 spec:
   replicas: 1
+
   selector:
     matchLabels:
       app: payment-service
+
   template:
     metadata:
       labels:
         app: payment-service
+
     spec:
       containers:
+
         - name: payment-service
+
           image: payment-service:latest
           imagePullPolicy: IfNotPresent
+
           ports:
             - containerPort: 8000
+            - containerPort: 8011
+            - containerPort: 8012
+
           envFrom:
             - configMapRef:
                 name: app-config
+
             - secretRef:
                 name: app-secret
+
           resources:
             requests:
               cpu: "100m"
               memory: "128Mi"
+
             limits:
               cpu: "250m"
               memory: "256Mi"
+
           livenessProbe:
             httpGet:
-              path: /health      # FIX Bug#6: was /
+              path: /health
               port: 8000
+
             initialDelaySeconds: 10
             periodSeconds: 10
+
           readinessProbe:
             httpGet:
-              path: /health      # FIX Bug#6: was /
+              path: /health
               port: 8000
+
             initialDelaySeconds: 5
             periodSeconds: 5
 
@@ -48,13 +66,27 @@ spec:
 
 apiVersion: v1
 kind: Service
+
 metadata:
   name: payment-service
-  namespace: backend            # FIX Bug#1: explicit namespace
+  namespace: backend
+
 spec:
-  type: ClusterIP               # FIX Bug#2: was NodePort
+  type: ClusterIP
+
   selector:
     app: payment-service
+
   ports:
-    - port: 8000
+
+    - name: api
+      port: 8000
       targetPort: 8000
+
+    - name: consumer-metrics
+      port: 8011
+      targetPort: 8011
+
+    - name: dlq-metrics
+      port: 8012
+      targetPort: 8012
