@@ -12,15 +12,17 @@ from shared.metrics.metrics import (
     EVENTS_PROCESSED,
     PAYMENT_FAILURE,
     PAYMENT_SUCCESS,
-    RETRY_COUNT,
     RABBITMQ_CONSUMED,
-    RABBITMQ_PUBLISHED,
-    RABBITMQ_FAILED,
-    RABBITMQ_RETRY,
     RABBITMQ_DLQ,
+    RABBITMQ_FAILED,
+    RABBITMQ_PUBLISHED,
+    RABBITMQ_RETRY,
+    RETRY_COUNT,
 )
+from shared.metrics.metrics_server import start_metrics_server
 
 from .logger import log_event
+
 
 ENV = settings.ENV
 
@@ -28,11 +30,13 @@ RABBITMQ_HOST = settings.RABBITMQ_HOST
 
 REDIS_HOST = settings.REDIS_HOST
 
+
 redis_client = redis_lib.Redis(
     host=REDIS_HOST,
     port=6379,
     decode_responses=True,
 )
+
 
 MAX_RETRIES = 3
 
@@ -159,12 +163,12 @@ def callback(ch, method, properties, body):
 
         trace_id = headers.get("x-trace-id", "unknown")
 
+        retry_count = headers.get("x-retry", 0)
+
         RABBITMQ_CONSUMED.labels(
             service="payment-service",
             queue=MAIN_QUEUE,
         ).inc()
-
-        retry_count = headers.get("x-retry", 0)
 
         event_id = f"payment:{data['order_id']}"
 
@@ -178,7 +182,7 @@ def callback(ch, method, properties, body):
             log_event(
                 "payment-service",
                 trace_id,
-                "Duplicate skipped",
+                "Duplicate payment event skipped",
                 data,
             )
 
@@ -189,18 +193,14 @@ def callback(ch, method, properties, body):
         log_event(
             "payment-service",
             trace_id,
-            f"Processing payment (retry={retry_count})",
+            f"Processing payment retry={retry_count}",
             data,
         )
 
         if data["order_id"] % 5 == 0:
             raise Exception("Simulated payment failure")
 
-        start_time = time.time()
-
         time.sleep(1 if ENV == "dev" else 0.5)
-
-        processing_time = time.time() - start_time
 
         redis_client.set(
             event_id,
@@ -222,11 +222,8 @@ def callback(ch, method, properties, body):
         log_event(
             "payment-service",
             trace_id,
-            "Payment processed",
-            {
-                "order_id": data["order_id"],
-                "processing_time_seconds": processing_time,
-            },
+            "Payment processed successfully",
+            data,
         )
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -250,7 +247,7 @@ def callback(ch, method, properties, body):
         log_event(
             "payment-service",
             trace_id,
-            "Processing failed",
+            "Payment processing failed",
             {"error": str(e)},
             level="ERROR",
         )
@@ -308,10 +305,12 @@ def callback(ch, method, properties, body):
 
 def start_consumer():
 
+    start_metrics_server(8011)
+
     log_event(
         "payment-service",
         "SYSTEM",
-        f"Payment consumer started ({ENV})",
+        "Payment consumer started with Prometheus metrics on port 8011",
     )
 
     while True:
@@ -335,7 +334,7 @@ def start_consumer():
             log_event(
                 "payment-service",
                 "SYSTEM",
-                "Waiting for inventory_reserved_payment",
+                "Waiting for payment events",
             )
 
             channel.start_consuming()
@@ -345,7 +344,7 @@ def start_consumer():
             log_event(
                 "payment-service",
                 "SYSTEM",
-                "Consumer error",
+                "Consumer crashed",
                 {"error": str(e)},
                 level="ERROR",
             )
