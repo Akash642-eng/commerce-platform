@@ -9,8 +9,10 @@ from shared.metrics.metrics import (
     RABBITMQ_CONSUMED,
     RABBITMQ_DLQ,
 )
+from shared.metrics.metrics_server import start_metrics_server
 
 from .logger import log_event
+
 
 RABBITMQ_HOST = settings.RABBITMQ_HOST
 
@@ -48,7 +50,7 @@ def callback(ch, method, properties, body):
             service="payment-service",
             event="dlq_message",
             trace_id=trace_id,
-            message="MESSAGE IN DLQ",
+            message="Message received in DLQ",
             data=data,
             level="ERROR",
         )
@@ -59,9 +61,9 @@ def callback(ch, method, properties, body):
 
         log_event(
             service="payment-service",
-            event="dlq_error",
-            trace_id="system",
-            message="DLQ processing error",
+            event="dlq_processing_failed",
+            trace_id="SYSTEM",
+            message="DLQ consumer failed",
             data={"error": str(e)},
             level="ERROR",
         )
@@ -69,11 +71,13 @@ def callback(ch, method, properties, body):
 
 def start_dlq_consumer():
 
+    start_metrics_server(8012)
+
     log_event(
         service="payment-service",
-        event="dlq_consumer_start",
-        trace_id="system",
-        message="DLQ consumer started",
+        event="dlq_consumer_started",
+        trace_id="SYSTEM",
+        message="DLQ consumer started with metrics on port 8012",
     )
 
     while True:
@@ -102,7 +106,7 @@ def start_dlq_consumer():
             log_event(
                 service="payment-service",
                 event="dlq_waiting",
-                trace_id="system",
+                trace_id="SYSTEM",
                 message="Waiting for DLQ messages",
             )
 
@@ -112,9 +116,9 @@ def start_dlq_consumer():
 
             log_event(
                 service="payment-service",
-                event="dlq_retry",
-                trace_id="system",
-                message="DLQ consumer retry",
+                event="dlq_consumer_crashed",
+                trace_id="SYSTEM",
+                message="DLQ consumer crashed",
                 data={"error": str(e)},
                 level="ERROR",
             )
