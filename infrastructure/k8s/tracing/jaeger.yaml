@@ -26,13 +26,13 @@ spec:
             # Jaeger UI
             - containerPort: 16686
 
-            # OTLP gRPC
+     
             - containerPort: 4317
 
-            # OTLP HTTP
+  
             - containerPort: 4318
 
-            # Jaeger collector HTTP
+
             - containerPort: 14268
 
           env:
@@ -61,17 +61,17 @@ spec:
 
   ports:
 
-    # OTLP gRPC
+  
     - name: otlp-grpc
       port: 4317
       targetPort: 4317
 
-    # OTLP HTTP
+
     - name: otlp-http
       port: 4318
       targetPort: 4318
 
-    # Jaeger collector
+  
     - name: collector
       port: 14268
       targetPort: 14268
