@@ -15,34 +15,25 @@ jobs:
 
     steps:
 
-      # --------------------------------
-      # CHECKOUT
-      # --------------------------------
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
 
-      # --------------------------------
-      # PYTHON SETUP
-      # --------------------------------
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
 
-      # --------------------------------
-      # INSTALL GLOBAL TOOLS
-      # --------------------------------
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install flake8
 
 
-      # --------------------------------
-      # LINT CHECK
-      # --------------------------------
+   
       - name: Run flake8
         run: |
           flake8 services shared \
@@ -52,38 +43,26 @@ jobs:
             --statistics
 
 
-      # --------------------------------
-      # PYTHON IMPORT VALIDATION
-      # --------------------------------
+
       - name: Compile Python files
         run: |
           python -m compileall services
           python -m compileall shared
 
 
-      # --------------------------------
-      # DOCKER BUILDX
-      # --------------------------------
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
 
-      # --------------------------------
-      # BUILD API GATEWAY
-      # FIX: Use repo root (.) as build context and -f to point at the Dockerfile.
-      # The Dockerfiles use paths like COPY services/api_gateway/... which are
-      # relative to the repo root, not to the service subdirectory.
-      # --------------------------------
+
       - name: Build API Gateway
         run: |
           docker build \
             -t api-gateway \
             -f ./services/api_gateway/Dockerfile \
             .
-            
-      # --------------------------------
-      # BUILD AUTH SERVICE
-      # --------------------------------
+
       - name: Build Auth Service
         run: |
           docker build \
@@ -92,9 +71,6 @@ jobs:
             .
 
 
-      # --------------------------------
-      # BUILD USER SERVICE
-      # --------------------------------
       - name: Build User Service
         run: |
           docker build \
@@ -103,9 +79,6 @@ jobs:
             .
 
 
-      # --------------------------------
-      # BUILD PRODUCT SERVICE
-      # --------------------------------
       - name: Build Product Service
         run: |
           docker build \
@@ -114,9 +87,6 @@ jobs:
             .
 
 
-      # --------------------------------
-      # BUILD INVENTORY SERVICE
-      # --------------------------------
       - name: Build Inventory Service
         run: |
           docker build \
@@ -125,9 +95,7 @@ jobs:
             .
 
 
-      # --------------------------------
-      # BUILD CART SERVICE
-      # --------------------------------
+     
       - name: Build Cart Service
         run: |
           docker build \
@@ -136,9 +104,6 @@ jobs:
             .
 
 
-      # --------------------------------
-      # BUILD ORDER SERVICE
-      # --------------------------------
       - name: Build Order Service
         run: |
           docker build \
@@ -147,9 +112,7 @@ jobs:
             .
 
 
-      # --------------------------------
-      # BUILD PAYMENT SERVICE
-      # --------------------------------
+    
       - name: Build Payment Service
         run: |
           docker build \
@@ -158,9 +121,7 @@ jobs:
             .
 
 
-      # --------------------------------
-      # BUILD DELIVERY SERVICE
-      # --------------------------------
+  
       - name: Build Delivery Service
         run: |
           docker build \
@@ -169,9 +130,7 @@ jobs:
             .
 
 
-      # --------------------------------
-      # BUILD NOTIFICATION SERVICE
-      # --------------------------------
+
       - name: Build Notification Service
         run: |
           docker build \
@@ -180,9 +139,7 @@ jobs:
             .
 
 
-      # --------------------------------
-      # BUILD SUPPORT SERVICE
-      # --------------------------------
+
       - name: Build Support Service
         run: |
           docker build \
@@ -190,10 +147,6 @@ jobs:
             -f ./services/support_service/Dockerfile \
             .
 
-
-      # --------------------------------
-      # SUCCESS
-      # --------------------------------
       - name: CI Success
         run: |
-          echo "All checks + builds passed successfully 🚀"
+          echo "All checks + builds passed successfully "

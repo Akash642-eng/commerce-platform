@@ -11,35 +11,24 @@ jobs:
 
     steps:
 
-      # --------------------------------
-      # CHECKOUT
-      # --------------------------------
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
 
-      # --------------------------------
-      # SETUP PYTHON
-      # --------------------------------
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
 
-      # --------------------------------
-      # DOCKER BUILDX
-      # --------------------------------
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
 
-      # --------------------------------
-      # BUILD IMAGES
-      # FIX: Use repo root (.) as build context and -f to point at the Dockerfile.
-      # The Dockerfiles use paths like COPY services/api_gateway/... which are
-      # relative to the repo root, not to the service subdirectory.
-      # --------------------------------
+
       - name: Build API Gateway
         run: |
           docker build \
@@ -128,9 +117,8 @@ jobs:
             .
 
 
-      # --------------------------------
-      # STAGING SUCCESS
-      # --------------------------------
+      #STAGING 
+
       - name: Deployment Success
         run: |
-          echo "Staging deployment pipeline completed 🚀"
+          echo "Staging deployment pipeline completed "

@@ -11,35 +11,23 @@ jobs:
 
     steps:
 
-      # --------------------------------
-      # CHECKOUT
-      # --------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
 
-      # --------------------------------
-      # PYTHON
-      # --------------------------------
+      #PYTHON
+   
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
 
-      # --------------------------------
-      # DOCKER BUILDX
-      # --------------------------------
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
 
-      # --------------------------------
-      # BUILD ALL SERVICES
-      # FIX: Use repo root (.) as build context and -f to point at the Dockerfile.
-      # The Dockerfiles use paths like COPY services/api_gateway/... which are
-      # relative to the repo root, not to the service subdirectory.
-      # --------------------------------
+ 
       - name: Build API Gateway
         run: docker build -t api-gateway:prod -f ./services/api_gateway/Dockerfile .
 
@@ -74,9 +62,7 @@ jobs:
         run: docker build -t support-service:prod -f ./services/support_service/Dockerfile .
 
 
-      # --------------------------------
-      # PRODUCTION SUCCESS
-      # --------------------------------
+ 
       - name: Production Build Success
         run: |
-          echo "Production pipeline completed successfully 🚀"
+          echo "Production pipeline completed successfully"
