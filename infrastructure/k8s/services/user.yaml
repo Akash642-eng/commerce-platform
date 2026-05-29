@@ -33,13 +33,13 @@ spec:
               memory: "256Mi"
           livenessProbe:
             httpGet:
-              path: /health      # FIX Bug#6: was /
+              path: /health      
               port: 8000
             initialDelaySeconds: 10
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /health      # FIX Bug#6: was /
+              path: /health      
               port: 8000
             initialDelaySeconds: 5
             periodSeconds: 5
