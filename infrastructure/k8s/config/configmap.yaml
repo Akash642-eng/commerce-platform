@@ -2,19 +2,16 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: app-config
-  namespace: default           # FIX Bug#5: this is the configmap for default-namespace services
+  namespace: default           
 data:
-  # FIX Bug#5: all URLs must use full cluster DNS — bare hostnames like
-  # http://order-service:8000 only resolve within the same namespace accidentally.
-  # Full FQDN guarantees correct resolution regardless of calling service's namespace.
+
   DATABASE_URL: postgresql://commerce:commerce@postgres.database.svc.cluster.local:5432/commerce_db
   REDIS_HOST: redis.cache.svc.cluster.local
   RABBITMQ_HOST: rabbitmq.messaging.svc.cluster.local
 
-  # Auth lives in 'backend' namespace — must use full FQDN from default-namespace callers
   AUTH_SERVICE: http://auth-service.backend.svc.cluster.local:8000
 
-  # All other services live in 'default' namespace
+ 
   ORDER_SERVICE: http://order-service.backend.svc.cluster.local:8000
   USER_SERVICE: http://user-service.backend.svc.cluster.local:8000
   PRODUCT_SERVICE: http://product-service.backend.svc.cluster.local:8000
