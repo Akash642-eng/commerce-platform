@@ -1,6 +1,4 @@
--- =========================
--- USERS & AUTHORIZATION
--- =========================
+--USERS & AUTHORIZATION
 
 CREATE TABLE users (
     id UUID PRIMARY KEY,
@@ -30,9 +28,8 @@ CREATE TABLE user_roles (
     PRIMARY KEY (user_id, role_id)
 );
 
--- =========================
--- PRODUCT & INVENTORY
--- =========================
+
+--PRODUCT & INVENTORY
 
 CREATE TABLE categories (
     id SERIAL PRIMARY KEY,
@@ -58,9 +55,8 @@ CREATE TABLE inventory (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- =========================
+
 -- CART
--- =========================
 
 CREATE TABLE carts (
     id SERIAL PRIMARY KEY,
@@ -75,9 +71,8 @@ CREATE TABLE cart_items (
     quantity INT NOT NULL
 );
 
--- =========================
+
 -- ADDRESSES
--- =========================
 
 CREATE TABLE addresses (
     id SERIAL PRIMARY KEY,
@@ -91,9 +86,8 @@ CREATE TABLE addresses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- =========================
+
 -- ORDERS
--- =========================
 
 CREATE TABLE orders (
     id SERIAL PRIMARY KEY,
@@ -121,9 +115,7 @@ CREATE TABLE order_status_history (
     changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- =========================
 -- PAYMENTS
--- =========================
 
 CREATE TABLE payments (
     id SERIAL PRIMARY KEY,
@@ -143,9 +135,7 @@ CREATE TABLE transactions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- =========================
 -- DELIVERY
--- =========================
 
 CREATE TABLE delivery_agents (
     id SERIAL PRIMARY KEY,
@@ -165,9 +155,7 @@ CREATE TABLE deliveries (
     delivered_at TIMESTAMP
 );
 
--- =========================
 -- NOTIFICATIONS
--- =========================
 
 CREATE TABLE notifications (
     id SERIAL PRIMARY KEY,
@@ -178,9 +166,9 @@ CREATE TABLE notifications (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- =========================
--- SUPPORT SYSTEM
--- =========================
+
+-- SUPPORT 
+
 
 CREATE TABLE support_tickets (
     id SERIAL PRIMARY KEY,
@@ -199,9 +187,8 @@ CREATE TABLE support_messages (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- =========================
--- LOGGING
--- =========================
+
+-- LOG
 
 CREATE TABLE audit_logs (
     id SERIAL PRIMARY KEY,
@@ -219,9 +206,9 @@ CREATE TABLE system_logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- =========================
--- INDEXES (PERFORMANCE)
--- =========================
+
+-- INDEXES
+
 
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_orders_user_id ON orders(user_id);
