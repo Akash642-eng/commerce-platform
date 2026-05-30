@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: user-service
-          image: user-service:v2
-          imagePullPolicy: IfNotPresent
+          image: user-service:v3
+          imagePullPolicy: Never
           ports:
             - containerPort: 8000
           envFrom:
