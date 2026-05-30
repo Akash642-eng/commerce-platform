@@ -1,9 +1,7 @@
 from prometheus_client import Counter, Histogram, Gauge
 
 
-# =========================================================
 # HTTP METRICS
-# =========================================================
 
 REQUEST_COUNT = Counter(
     "http_requests_total",
@@ -18,9 +16,7 @@ REQUEST_LATENCY = Histogram(
 )
 
 
-# =========================================================
 # GENERIC EVENT METRICS
-# =========================================================
 
 EVENTS_PROCESSED = Counter(
     "events_processed_total",
@@ -34,10 +30,8 @@ EVENTS_FAILED = Counter(
     ["service", "event"]
 )
 
-
-# =========================================================
 # RETRY / DLQ METRICS
-# =========================================================
+
 
 RETRY_COUNT = Counter(
     "retry_total",
@@ -52,9 +46,7 @@ DLQ_COUNT = Counter(
 )
 
 
-# =========================================================
 # SAGA METRICS
-# =========================================================
 
 SAGA_SUCCESS = Counter(
     "saga_success_total",
@@ -69,9 +61,7 @@ SAGA_FAILURE = Counter(
 )
 
 
-# =========================================================
 # CONSUMER METRICS
-# =========================================================
 
 CONSUMER_ACTIVE = Gauge(
     "consumer_active",
@@ -86,9 +76,7 @@ CONSUMER_LAG = Gauge(
 )
 
 
-# =========================================================
 # PAYMENT METRICS
-# =========================================================
 
 PAYMENT_SUCCESS = Counter(
     "payment_success_total",
@@ -103,9 +91,7 @@ PAYMENT_FAILURE = Counter(
 )
 
 
-# =========================================================
 # INVENTORY METRICS
-# =========================================================
 
 INVENTORY_RESERVED = Counter(
     "inventory_reserved_total",
@@ -126,9 +112,7 @@ LOW_STOCK_ALERT = Counter(
 )
 
 
-# =========================================================
 # ORDER METRICS
-# =========================================================
 
 ORDERS_CREATED = Counter(
     "orders_created_total",
@@ -155,9 +139,7 @@ ORDERS_CANCELLED = Counter(
 )
 
 
-# =========================================================
 # AUTH METRICS
-# =========================================================
 
 JWT_CREATED = Counter(
     "jwt_created_total",
@@ -190,9 +172,8 @@ AUTH_LOGIN_FAILED = Counter(
 )
 
 
-# =========================================================
+
 # CACHE METRICS
-# =========================================================
 
 CACHE_HIT = Counter(
     "cache_hit_total",
@@ -207,9 +188,7 @@ CACHE_MISS = Counter(
 )
 
 
-# =========================================================
 # DATABASE METRICS
-# =========================================================
 
 DB_QUERY_COUNT = Counter(
     "db_query_total",
@@ -236,9 +215,7 @@ DB_CONNECTION_FAILURE = Counter(
 )
 
 
-# =========================================================
-# RABBITMQ METRICS
-# =========================================================
+# RABBITMQ 
 
 RABBITMQ_PUBLISHED = Counter(
     "rabbitmq_published_total",
@@ -271,9 +248,8 @@ RABBITMQ_DLQ = Counter(
 )
 
 
-# =========================================================
-# API GATEWAY METRICS
-# =========================================================
+# API GATEWAY
+
 
 RATE_LIMIT_TRIGGERED = Counter(
     "rate_limit_triggered_total",
@@ -288,9 +264,8 @@ GATEWAY_REQUEST_FORWARDED = Counter(
 )
 
 
-# =========================================================
-# SYSTEM HEALTH METRICS
-# =========================================================
+
+# SYSTEM HEALTH
 
 SERVICE_HEALTH = Gauge(
     "service_health",
@@ -304,10 +279,7 @@ ACTIVE_USERS = Gauge(
     ["service"]
 )
 
-
-# =========================================================
-# PLATFORM METRICS
-# =========================================================
+# PLATFORM 
 
 POD_RESTART_COUNT = Counter(
     "pod_restart_total",
