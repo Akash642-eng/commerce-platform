@@ -1,6 +1,7 @@
 import threading
 
 from fastapi import FastAPI
+from shared.tracing.tracing import setup_tracing
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from shared.logging.logger import log_event
@@ -11,11 +12,8 @@ from .payment_consumer import start_payment_consumer
 from .payment_failed_consumer import start_failed_consumer
 from .routes import orders
 
-from shared.tracing.tracing import setup_tracing
-
 app = FastAPI(title="Order Service", redirect_slashes=False)
-
-setup_tracing("order-service")
+setup_tracing(app, "order-service")
 
 Instrumentator().instrument(app).expose(app)
 
