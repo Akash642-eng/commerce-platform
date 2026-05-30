@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: support-service
-          image: support-service:latest
-          imagePullPolicy: IfNotPresent
+          image: support-service:v3
+          imagePullPolicy: Never
           ports:
             - containerPort: 8000
           envFrom:

@@ -22,8 +22,8 @@ spec:
 
         - name: payment-service
 
-          image: payment-service:latest
-          imagePullPolicy: IfNotPresent
+          image: payment-service:v3
+          imagePullPolicy: Never
 
           ports:
             - containerPort: 8000
