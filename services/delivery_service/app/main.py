@@ -6,7 +6,10 @@ from shared.logging.logger import log_event
 from .database import Base, engine
 from .routes import delivery
 
+from shared.tracing.tracing import setup_tracing
+
 app = FastAPI(title="Delivery Service")
+setup_tracing(app, "delivery-service")
 
 
 Instrumentator().instrument(app).expose(app)

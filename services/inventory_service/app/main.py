@@ -10,11 +10,13 @@ from .rabbitmq_consumer import start_consumer
 from .release_consumer import start_release_consumer
 from .routes import inventory
 
+from shared.tracing.tracing import setup_tracing
+
 app = FastAPI(title="Inventory Service")
 
 
 Instrumentator().instrument(app).expose(app)
-
+setup_tracing(app, "inventory-service")
 
 Base.metadata.create_all(bind=engine)
 

@@ -5,8 +5,10 @@ from shared.logging.logger import log_event
 
 from .routers import auth
 
-app = FastAPI(title="Auth Service")
+from shared.tracing.tracing import setup_tracing
 
+app = FastAPI(title="Auth Service")
+setup_tracing(app, "auth-service")
 
 Instrumentator().instrument(app).expose(app)
 
