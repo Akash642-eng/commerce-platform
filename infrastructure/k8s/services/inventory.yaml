@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: inventory-service
-          image: inventory-service:latest
-          imagePullPolicy: IfNotPresent
+          image: inventory-service:v3
+          imagePullPolicy: Never
           ports:
             - containerPort: 8000
           envFrom:

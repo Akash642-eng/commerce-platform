@@ -21,7 +21,7 @@ spec:
       containers:
         - name: auth-service
 
-          image: auth-service:v2
+          image: auth-service:v3
           imagePullPolicy: Never
 
           ports:

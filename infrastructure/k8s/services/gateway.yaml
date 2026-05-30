@@ -20,8 +20,8 @@ spec:
       containers:
         - name: api-gateway
 
-          image: api-gateway:latest
-          imagePullPolicy: IfNotPresent
+          image: api-gateway:v3
+          imagePullPolicy: Never
 
           ports:
             - containerPort: 8000
