@@ -8,10 +8,13 @@ from shared.logging.logger import log_event
 from .database import Base, engine
 from .routes import auth, users
 
+from shared.tracing.tracing import setup_tracing
+
 load_dotenv()
 
 
 app = FastAPI(title="User Service", version="1.0.0")
+setup_tracing(app, "user-service")
 
 
 Base.metadata.create_all(bind=engine)

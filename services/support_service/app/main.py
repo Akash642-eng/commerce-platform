@@ -6,8 +6,10 @@ from shared.logging.logger import log_event
 from .database import Base, engine
 from .routes import support
 
-app = FastAPI(title="Support Service")
+from shared.tracing.tracing import setup_tracing
 
+app = FastAPI(title="Support Service")
+setup_tracing(app, "support-service")
 
 Instrumentator().instrument(app).expose(app)
 
