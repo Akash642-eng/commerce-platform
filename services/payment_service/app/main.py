@@ -8,8 +8,10 @@ from shared.logging.logger import log_event
 from .dlq_consumer import start_dlq_consumer
 from .rabbitmq_consumer import start_consumer
 
-app = FastAPI(title="Payment Service")
+from shared.tracing.tracing import setup_tracing
 
+app = FastAPI(title="Payment Service")
+setup_tracing(app, "payment-service")
 
 Instrumentator().instrument(app).expose(app)
 
