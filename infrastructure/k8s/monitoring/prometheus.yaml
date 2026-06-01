@@ -47,15 +47,19 @@ spec:
             httpGet:
               path: /-/healthy
               port: 9090
-            initialDelaySeconds: 20
-            periodSeconds: 10
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 6
 
           readinessProbe:
             httpGet:
               path: /-/ready
               port: 9090
-            initialDelaySeconds: 10
-            periodSeconds: 5
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
 
           volumeMounts:
             - name: config
