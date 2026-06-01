@@ -33,16 +33,20 @@ spec:
               memory: "256Mi"
           livenessProbe:
             httpGet:
-              path: /health      # FIX Bug#6: was /
+              path: /health      
               port: 8000
-            initialDelaySeconds: 10
-            periodSeconds: 10
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 6
           readinessProbe:
             httpGet:
-              path: /health      # FIX Bug#6: was /
+              path: /health      
               port: 8000
-            initialDelaySeconds: 5
-            periodSeconds: 5
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
 
 ---
 
