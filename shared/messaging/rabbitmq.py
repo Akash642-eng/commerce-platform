@@ -1,6 +1,7 @@
 import pika
 
 from shared.config.settings import settings
+from shared.resilience.config import RABBITMQ_TIMEOUT
 
 
 def get_rabbitmq_connection():
@@ -12,8 +13,14 @@ def get_rabbitmq_connection():
             host=settings.RABBITMQ_HOST,
             port=settings.RABBITMQ_PORT,
             credentials=credentials,
+
             heartbeat=600,
-            blocked_connection_timeout=300,
+            
+            socket_timeout=RABBITMQ_TIMEOUT,
+
+            blocked_connection_timeout=RABBITMQ_TIMEOUT,
+            connection_attempts=3,
+            retry_delay=2,
         )
     )
 
