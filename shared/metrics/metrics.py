@@ -247,6 +247,19 @@ RABBITMQ_DLQ = Counter(
     ["service", "queue"]
 )
 
+TIMEOUT_TOTAL = Histogram(
+    "timeout_total",
+    "Total timeout events",
+    ["service", "operation"]
+)
+
+TIMEOUT_DURATION = Histogram(
+    "timeout_duration_seconds",
+    "TTimeout duration in seconds",
+    ["service", "operation"]
+)
+
+
 
 # API GATEWAY
 
