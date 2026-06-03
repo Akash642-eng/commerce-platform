@@ -1,3 +1,10 @@
-class TimeoutException(Exception):
-    """Raised when an operation exceeds the specified timeout."""
+class PaymentServiceException(Exception):
+    pass
+
+
+class InventoryServiceException(Exception):
+    pass
+
+
+class ExternalServiceException(Exception):
     pass
