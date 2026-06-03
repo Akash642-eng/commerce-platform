@@ -3,6 +3,7 @@ import random
 import time
 
 import pika
+import pybreaker
 import redis as redis_lib
 
 from shared.config.settings import settings
@@ -20,6 +21,8 @@ from shared.metrics.metrics import (
     RETRY_COUNT,
 )
 from shared.metrics.metrics_server import start_metrics_server
+from shared.resilience.exceptions import PaymentServiceException
+from shared.resilience.retry import retry_policy
 
 from .logger import log_event
 
@@ -37,6 +40,11 @@ redis_client = redis_lib.Redis(
     decode_responses=True,
 )
 
+
+payment_breaker = pybreaker.CircuitBreaker(
+    fail_max=5,
+    reset_timeout=60,
+)
 
 MAX_RETRIES = 3
 
@@ -151,6 +159,18 @@ def publish_payment_event(data, trace_id):
     )
 
 
+@payment_breaker
+@retry_policy
+def process_payment(data):
+
+    if data["order_id"] % 5 == 0:
+        raise PaymentServiceException(
+            "Simulated payment failure"
+        )
+
+    return True
+
+
 def callback(ch, method, properties, body):
 
     trace_id = "unknown"
@@ -197,10 +217,12 @@ def callback(ch, method, properties, body):
             data,
         )
 
-        if data["order_id"] % 5 == 0:
-            raise Exception("Simulated payment failure")
+        process_payment(data)
 
-        time.sleep(1 if ENV == "dev" else 0.5)
+        time.sleep(
+            1 if ENV == "dev"
+            else 0.5
+        )
 
         redis_client.set(
             event_id,
