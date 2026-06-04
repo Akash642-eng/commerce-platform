@@ -21,6 +21,7 @@ from shared.metrics.metrics import (
     RETRY_COUNT,
 )
 from shared.metrics.metrics_server import start_metrics_server
+from shared.resilience import payment_breaker
 from shared.resilience.exceptions import PaymentServiceException
 from shared.resilience.retry import retry_policy
 
@@ -40,11 +41,6 @@ redis_client = redis_lib.Redis(
     decode_responses=True,
 )
 
-
-payment_breaker = pybreaker.CircuitBreaker(
-    fail_max=5,
-    reset_timeout=60,
-)
 
 MAX_RETRIES = 3
 
@@ -164,9 +160,15 @@ def publish_payment_event(data, trace_id):
 def process_payment(data):
 
     if data["order_id"] % 5 == 0:
+
         raise PaymentServiceException(
             "Simulated payment failure"
         )
+
+    time.sleep(
+        1 if ENV == "dev"
+        else 0.5
+    )
 
     return True
 
@@ -181,9 +183,15 @@ def callback(ch, method, properties, body):
 
         headers = properties.headers or {}
 
-        trace_id = headers.get("x-trace-id", "unknown")
+        trace_id = headers.get(
+            "x-trace-id",
+            "unknown",
+        )
 
-        retry_count = headers.get("x-retry", 0)
+        retry_count = headers.get(
+            "x-retry",
+            0,
+        )
 
         RABBITMQ_CONSUMED.labels(
             service="payment-service",
@@ -206,7 +214,9 @@ def callback(ch, method, properties, body):
                 data,
             )
 
-            ch.basic_ack(delivery_tag=method.delivery_tag)
+            ch.basic_ack(
+                delivery_tag=method.delivery_tag
+            )
 
             return
 
@@ -219,18 +229,16 @@ def callback(ch, method, properties, body):
 
         process_payment(data)
 
-        time.sleep(
-            1 if ENV == "dev"
-            else 0.5
-        )
-
         redis_client.set(
             event_id,
             "1",
             ex=3600,
         )
 
-        publish_payment_event(data, trace_id)
+        publish_payment_event(
+            data,
+            trace_id,
+        )
 
         PAYMENT_SUCCESS.labels(
             service="payment-service",
@@ -248,7 +256,28 @@ def callback(ch, method, properties, body):
             data,
         )
 
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+        ch.basic_ack(
+            delivery_tag=method.delivery_tag
+        )
+
+    except pybreaker.CircuitBreakerError:
+
+        EVENTS_FAILED.labels(
+            service="payment-service",
+            event="circuit_open",
+        ).inc()
+
+        log_event(
+            "payment-service",
+            trace_id,
+            "Circuit breaker OPEN",
+            {},
+            level="ERROR",
+        )
+
+        ch.basic_ack(
+            delivery_tag=method.delivery_tag
+        )
 
     except Exception as e:
 
@@ -276,7 +305,10 @@ def callback(ch, method, properties, body):
 
         headers = properties.headers or {}
 
-        retry_count = headers.get("x-retry", 0)
+        retry_count = headers.get(
+            "x-retry",
+            0,
+        )
 
         if retry_count < MAX_RETRIES:
 
@@ -292,7 +324,9 @@ def callback(ch, method, properties, body):
 
             new_headers = headers.copy()
 
-            new_headers["x-retry"] = retry_count + 1
+            new_headers["x-retry"] = (
+                retry_count + 1
+            )
 
             new_headers["x-trace-id"] = trace_id
 
@@ -322,7 +356,9 @@ def callback(ch, method, properties, body):
                 headers=headers,
             )
 
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+        ch.basic_ack(
+            delivery_tag=method.delivery_tag
+        )
 
 
 def start_consumer():
@@ -345,7 +381,9 @@ def start_consumer():
 
             setup_queues(channel)
 
-            channel.basic_qos(prefetch_count=1)
+            channel.basic_qos(
+                prefetch_count=1
+            )
 
             channel.basic_consume(
                 queue=MAIN_QUEUE,
