@@ -14,3 +14,7 @@ opentelemetry-exporter-otlp
 opentelemetry-instrumentation-fastapi
 opentelemetry-instrumentation-redis
 opentelemetry-instrumentation-requests
+
+
+pybreaker
+tenacity
