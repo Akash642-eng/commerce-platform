@@ -91,13 +91,32 @@ CREATE TABLE addresses (
 
 CREATE TABLE orders (
     id SERIAL PRIMARY KEY,
+
     user_id UUID REFERENCES users(id),
+
     address_id INT REFERENCES addresses(id),
-    total_amount DECIMAL(10,2),
-    status VARCHAR(50),
-    payment_status VARCHAR(50),
+
+    total_amount DECIMAL(10,2) NOT NULL,
+
+    status VARCHAR(50) NOT NULL,
+
+    payment_status VARCHAR(50) DEFAULT 'PENDING',
+
+    saga_id UUID,
+
+    correlation_id UUID,
+
+    event_version VARCHAR(20) DEFAULT 'v1',
+
+    failure_reason TEXT,
+
+    compensation_status VARCHAR(50),
+
     is_deleted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE order_items (
