@@ -1,4 +1,4 @@
-from sqlalchemy import DECIMAL, TIMESTAMP, Column, Integer, String
+from sqlalchemy import DECIMAL, TIMESTAMP, Column, Integer, String, Text
 from sqlalchemy.sql import func
 
 from .database import Base
@@ -16,7 +16,50 @@ class Order(Base):
 
     status = Column(String, nullable=False)
 
-    created_at = Column(TIMESTAMP, server_default=func.now())
+    payment_status = Column(
+        String,
+        default="PENDING",
+        nullable=False,
+    )
+
+    saga_id = Column(
+        String(36),
+        nullable=True,
+        index=True,
+    )
+
+    correlation_id = Column(
+        String(36),
+        nullable=True,
+        index=True,
+    )
+
+    event_version = Column(
+        String(20),
+        default="v1",
+        nullable=False,
+    )
+
+    failure_reason = Column(
+        Text,
+        nullable=True,
+    )
+
+    compensation_status = Column(
+        String(50),
+        nullable=True,
+    )
+
+    created_at = Column(
+        TIMESTAMP,
+        server_default=func.now(),
+    )
+
+    updated_at = Column(
+        TIMESTAMP,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
 
 
 class OrderItem(Base):
@@ -44,4 +87,7 @@ class OrderStatusHistory(Base):
 
     status = Column(String, nullable=False)
 
-    changed_at = Column(TIMESTAMP, server_default=func.now())
+    changed_at = Column(
+        TIMESTAMP,
+        server_default=func.now(),
+    )
