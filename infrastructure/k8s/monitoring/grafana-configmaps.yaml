@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: grafana-datasource
+  namespace: monitoring
+
+data:
+  prometheus.yaml: |
+    apiVersion: 1
+
+    datasources:
+      - name: Prometheus
+        uid: prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus.monitoring.svc.cluster.local:9090
+        isDefault: true
+        editable: true
+
+---
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: grafana-dashboard-provider
+  namespace: monitoring
+
+data:
+  dashboard-provider.yaml: |
+    apiVersion: 1
+
+    providers:
+      - name: CommercePlatform
+        orgId: 1
+        folder: Commerce Platform
+        type: file
+        disableDeletion: false
+        editable: true
+
+        options:
+          path: /var/lib/grafana/dashboards
+
+---
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: grafana-dashboards
+  namespace: monitoring
+
+data:
+  platform-overview.json: |
+    {}
+
+  kubernetes-cluster.json: |
+    {}
+
+  infrastructure.json: |
+    {}
+
+  rabbitmq.json: |
+    {}
+
+  postgresql.json: |
+    {}
+
+  redis.json: |
+    {}
+
+  api-gateway.json: |
+    {}
+
+  auth-service.json: |
+    {}
+
+  order-service.json: |
+    {}
+
+  payment-service.json: |
+    {}
+
+  inventory-service.json: |
+    {}
+
+  cart-service.json: |
+    {}
+
+  product-service.json: |
+    {}
+
+  user-service.json: |
+    {}
+
+  delivery-service.json: |
+    {}
+
+  notification-service.json: |
+    {}
+
+  support-service.json: |
+    {}
+
+  saga-monitoring.json: |
+    {}
+
+  incident-dashboard.json: |
+    {}
+
+  business-kpi.json: |
+    {}
+
+  executive-dashboard.json: |
+    {}

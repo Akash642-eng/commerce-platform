@@ -1,0 +1,263 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: prometheus-rules
+  namespace: monitoring
+
+data:
+  alerts.yml: |
+    groups:
+    - name: kubernetes.rules
+      rules:
+      - alert: PodCrashLoopBackOff
+        expr: kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"} == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Pod CrashLoopBackOff"
+          description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is in CrashLoopBackOff."
+
+      - alert: PodRestartingFrequently
+        expr: increase(kube_pod_container_status_restarts_total[10m]) > 3
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pod Restarting Frequently"
+          description: "Pod {{ $labels.pod }} restarted more than 3 times in 10 minutes."
+
+      - alert: PodNotReady
+        expr: kube_pod_status_ready{condition="true"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Pod Not Ready"
+          description: "Pod {{ $labels.pod }} is not Ready."
+
+      - alert: DeploymentUnavailable
+        expr: kube_deployment_status_replicas_available < kube_deployment_spec_replicas
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Deployment Unavailable"
+          description: "Deployment {{ $labels.deployment }} has unavailable replicas."
+
+    - name: infrastructure.rules
+      rules:
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance)(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU Usage"
+          description: "CPU usage above 85% on {{ $labels.instance }}."
+
+      - alert: HighMemoryUsage
+        expr: ((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Memory Usage"
+          description: "Memory usage above 85% on {{ $labels.instance }}."
+
+    - name: infrastructure.health.rules
+      rules:
+      - alert: NodeNotReady
+        expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kubernetes node is NotReady"
+
+      - alert: OOMKilled
+        expr: increase(kube_pod_container_status_last_terminated_reason{reason="OOMKilled"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Container killed due to Out Of Memory"
+
+      - alert: ImagePullBackOff
+        expr: kube_pod_container_status_waiting_reason{reason="ImagePullBackOff"} > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Container ImagePullBackOff"
+
+      - alert: ErrImagePull
+        expr: kube_pod_container_status_waiting_reason{reason="ErrImagePull"} > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Container image pull failed"
+
+      - alert: ContainerWaiting
+        expr: kube_pod_container_status_waiting > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container waiting too long"
+
+    - name: platform.services.rules
+      rules:
+      - alert: RabbitMQDown
+        expr: up{job="rabbitmq"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "RabbitMQ is DOWN"
+
+      - alert: PostgreSQLDown
+        expr: up{job="postgres"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL Exporter Down"
+
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis Exporter Down"
+
+      - alert: PrometheusDown
+        expr: up{job="prometheus"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus Down"
+
+      - alert: APIGatewayDown
+        expr: up{job="api-gateway"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API Gateway Down"
+
+      - alert: OrderServiceDown
+        expr: up{job="order-service"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Order Service Down"
+
+      - alert: PaymentServiceDown
+        expr: up{job="payment-service"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Payment Service Down"
+
+      - alert: InventoryServiceDown
+        expr: up{job="inventory-service"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Inventory Service Down"
+
+    - name: rabbitmq.rules
+      rules:
+      - alert: RabbitMQQueueBacklog
+        expr: rabbitmq_queue_messages > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "RabbitMQ queue backlog detected"
+          description: "Queue {{ $labels.queue }} contains more than 100 messages."
+
+      - alert: RabbitMQDLQGrowing
+        expr: rabbitmq_queue_messages{queue=~".*dlq.*"} > 10
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Dead Letter Queue growing"
+          description: "DLQ {{ $labels.queue }} has accumulated messages."
+
+      - alert: RabbitMQRetryQueueGrowing
+        expr: rabbitmq_queue_messages{queue=~".*retry.*"} > 20
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Retry Queue growing"
+          description: "Retry queue {{ $labels.queue }} has accumulated messages."
+
+      - alert: RabbitMQConsumersMissing
+        expr: rabbitmq_queue_consumers == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Queue has no consumers"
+          description: "Queue {{ $labels.queue }} currently has no active consumers."
+
+    - name: commerce.business.rules
+      rules:
+      - alert: PaymentFailuresHigh
+        expr: increase(payment_failure_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High payment failure rate"
+
+      - alert: OrderFailuresHigh
+        expr: increase(orders_failed_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High order failure rate"
+
+      - alert: DLQMessagesGrowing
+        expr: increase(dlq_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Dead Letter Queue growing rapidly"
+
+      - alert: RetryStorm
+        expr: increase(retry_total[5m]) > 20
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Large number of retries detected"
+
+      - alert: EventFailuresHigh
+        expr: increase(events_failed_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High event failure rate"
+
+      - alert: PaymentSuccessDropped
+        expr: rate(payment_success_total[5m]) < 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Payment throughput dropped"
