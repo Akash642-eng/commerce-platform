@@ -5,6 +5,7 @@ import uuid
 import httpx
 import redis
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import (CONTENT_TYPE_LATEST, Counter, Histogram,
                                generate_latest)
 
@@ -14,6 +15,21 @@ from shared.tracing.tracing import setup_tracing
 from .config import SERVICES
 
 app = FastAPI(title="API Gateway", redirect_slashes=False)
+
+
+# Local frontend dev servers (Vite) need explicit CORS — browsers block
+# cross-origin fetch() calls otherwise. Add your deployed frontend origin(s)
+# here too once there's a real staging/prod URL.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 setup_tracing(app, "api-gateway")
@@ -172,10 +188,7 @@ async def gateway(service: str, path: str, request: Request):
 
         service_url = SERVICES[service].rstrip("/")
 
-        target_path = "/" + path.lstrip("/")
-
-        if not target_path.endswith("/"):
-            target_path += "/"
+        target_path = f"/{service}/{path.lstrip('/')}"
 
         url = f"{service_url}{target_path}"
 
