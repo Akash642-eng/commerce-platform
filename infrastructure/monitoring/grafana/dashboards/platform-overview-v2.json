@@ -22,9 +22,9 @@
               ],
     "panels":  [
                    {
-                       "id":  396514,
+                       "id":  747806,
                        "type":  "stat",
-                       "title":  "Target UP",
+                       "title":  "Services UP",
                        "gridPos":  {
                                        "h":  5,
                                        "w":  6,
@@ -46,7 +46,7 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "up{job=\"api-gateway\"}",
+                                           "expr":  "sum(up{job=~\"api-gateway|auth-service|user-service|product-service|inventory-service|cart-service|order-service|payment-service|delivery-service|notification-service|support-service\"})",
                                            "legendFormat":  "{{job}}",
                                            "range":  true
                                        }
@@ -61,13 +61,52 @@
                                    }
                    },
                    {
-                       "id":  892810,
+                       "id":  870374,
                        "type":  "stat",
-                       "title":  "Requests / sec",
+                       "title":  "Services DOWN",
                        "gridPos":  {
                                        "h":  5,
                                        "w":  6,
                                        "x":  6,
+                                       "y":  0
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "unit":  "short"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "count(up{job=~\"api-gateway|auth-service|user-service|product-service|inventory-service|cart-service|order-service|payment-service|delivery-service|notification-service|support-service\"} == 0)",
+                                           "legendFormat":  "{{job}}",
+                                           "range":  true
+                                       }
+                                   ],
+                       "options":  {
+                                       "reduceOptions":  {
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ]
+                                                         },
+                                       "orientation":  "auto"
+                                   }
+                   },
+                   {
+                       "id":  617147,
+                       "type":  "stat",
+                       "title":  "Order Request Rate",
+                       "gridPos":  {
+                                       "h":  5,
+                                       "w":  6,
+                                       "x":  12,
                                        "y":  0
                                    },
                        "datasource":  {
@@ -85,8 +124,8 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "sum(rate(gateway_requests_total[$__rate_interval]))",
-                                           "legendFormat":  "requests/sec",
+                                           "expr":  "sum(rate(http_requests_total{job=\"order-service\"}[5m]))",
+                                           "legendFormat":  "{{job}}",
                                            "range":  true
                                        }
                                    ],
@@ -100,48 +139,9 @@
                                    }
                    },
                    {
-                       "id":  3328,
+                       "id":  476980,
                        "type":  "stat",
-                       "title":  "P95 Latency",
-                       "gridPos":  {
-                                       "h":  5,
-                                       "w":  6,
-                                       "x":  12,
-                                       "y":  0
-                                   },
-                       "datasource":  {
-                                          "type":  "prometheus",
-                                          "uid":  "prometheus"
-                                      },
-                       "fieldConfig":  {
-                                           "defaults":  {
-                                                            "unit":  "s"
-                                                        },
-                                           "overrides":  [
-
-                                                         ]
-                                       },
-                       "targets":  [
-                                       {
-                                           "refId":  "A",
-                                           "expr":  "histogram_quantile(0.95, sum by(le)(rate(gateway_request_latency_seconds_bucket[$__rate_interval])))",
-                                           "legendFormat":  "p95",
-                                           "range":  true
-                                       }
-                                   ],
-                       "options":  {
-                                       "reduceOptions":  {
-                                                             "calcs":  [
-                                                                           "lastNotNull"
-                                                                       ]
-                                                         },
-                                       "orientation":  "auto"
-                                   }
-                   },
-                   {
-                       "id":  802437,
-                       "type":  "stat",
-                       "title":  "HTTP Errors (1h)",
+                       "title":  "Payment Service UP",
                        "gridPos":  {
                                        "h":  5,
                                        "w":  6,
@@ -163,8 +163,8 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "sum(increase(gateway_requests_total{status=~\"4..|5..\"}[1h])) or vector(0)",
-                                           "legendFormat":  "4xx/5xx",
+                                           "expr":  "up{job=\"payment-service\"}",
+                                           "legendFormat":  "{{job}}",
                                            "range":  true
                                        }
                                    ],
@@ -178,14 +178,170 @@
                                    }
                    },
                    {
-                       "id":  836968,
+                       "id":  663899,
+                       "type":  "stat",
+                       "title":  "RabbitMQ Ready Messages",
+                       "gridPos":  {
+                                       "h":  5,
+                                       "w":  6,
+                                       "x":  0,
+                                       "y":  5
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "unit":  "short"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "sum(rabbitmq_queue_messages_ready)",
+                                           "legendFormat":  "{{job}}",
+                                           "range":  true
+                                       }
+                                   ],
+                       "options":  {
+                                       "reduceOptions":  {
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ]
+                                                         },
+                                       "orientation":  "auto"
+                                   }
+                   },
+                   {
+                       "id":  339088,
+                       "type":  "stat",
+                       "title":  "RabbitMQ Redeliveries",
+                       "gridPos":  {
+                                       "h":  5,
+                                       "w":  6,
+                                       "x":  6,
+                                       "y":  5
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "unit":  "ops"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "sum(rate(rabbitmq_channel_messages_redelivered_total[5m]))",
+                                           "legendFormat":  "{{job}}",
+                                           "range":  true
+                                       }
+                                   ],
+                       "options":  {
+                                       "reduceOptions":  {
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ]
+                                                         },
+                                       "orientation":  "auto"
+                                   }
+                   },
+                   {
+                       "id":  117633,
+                       "type":  "stat",
+                       "title":  "Prometheus Targets UP",
+                       "gridPos":  {
+                                       "h":  5,
+                                       "w":  6,
+                                       "x":  12,
+                                       "y":  5
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "unit":  "short"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "sum(up)",
+                                           "legendFormat":  "{{job}}",
+                                           "range":  true
+                                       }
+                                   ],
+                       "options":  {
+                                       "reduceOptions":  {
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ]
+                                                         },
+                                       "orientation":  "auto"
+                                   }
+                   },
+                   {
+                       "id":  203862,
+                       "type":  "stat",
+                       "title":  "Critical Alerts",
+                       "gridPos":  {
+                                       "h":  5,
+                                       "w":  6,
+                                       "x":  18,
+                                       "y":  5
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "unit":  "short"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "count(ALERTS{alertstate=\"firing\",severity=\"critical\"})",
+                                           "legendFormat":  "{{job}}",
+                                           "range":  true
+                                       }
+                                   ],
+                       "options":  {
+                                       "reduceOptions":  {
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ]
+                                                         },
+                                       "orientation":  "auto"
+                                   }
+                   },
+                   {
+                       "id":  86139,
                        "type":  "timeseries",
-                       "title":  "Gateway Request Rate",
+                       "title":  "HTTP Request Rate",
                        "gridPos":  {
                                        "h":  8,
                                        "w":  12,
                                        "x":  0,
-                                       "y":  5
+                                       "y":  10
                                    },
                        "datasource":  {
                                           "type":  "prometheus",
@@ -202,8 +358,8 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "sum by(endpoint)(rate(gateway_requests_total[$__rate_interval]))",
-                                           "legendFormat":  "{{endpoint}}",
+                                           "expr":  "sum by (job) (rate(http_requests_total[5m]))",
+                                           "legendFormat":  "{{job}}",
                                            "range":  true
                                        }
                                    ],
@@ -218,14 +374,14 @@
                                    }
                    },
                    {
-                       "id":  765547,
+                       "id":  549303,
                        "type":  "timeseries",
-                       "title":  "Gateway P95 Latency",
+                       "title":  "HTTP P95 Latency",
                        "gridPos":  {
                                        "h":  8,
                                        "w":  12,
                                        "x":  12,
-                                       "y":  5
+                                       "y":  10
                                    },
                        "datasource":  {
                                           "type":  "prometheus",
@@ -242,8 +398,8 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "histogram_quantile(0.95, sum by(le, endpoint)(rate(gateway_request_latency_seconds_bucket[$__rate_interval])))",
-                                           "legendFormat":  "{{endpoint}}",
+                                           "expr":  "histogram_quantile(0.95, sum by (job, le) (rate(http_request_duration_seconds_bucket[5m])))",
+                                           "legendFormat":  "{{job}}",
                                            "range":  true
                                        }
                                    ],
@@ -258,14 +414,14 @@
                                    }
                    },
                    {
-                       "id":  61666,
+                       "id":  791919,
                        "type":  "timeseries",
-                       "title":  "HTTP Status Rate",
+                       "title":  "Kubernetes Pod Restarts",
                        "gridPos":  {
                                        "h":  8,
                                        "w":  12,
                                        "x":  0,
-                                       "y":  13
+                                       "y":  18
                                    },
                        "datasource":  {
                                           "type":  "prometheus",
@@ -273,7 +429,7 @@
                                       },
                        "fieldConfig":  {
                                            "defaults":  {
-                                                            "unit":  "reqps"
+                                                            "unit":  "short"
                                                         },
                                            "overrides":  [
 
@@ -282,47 +438,7 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "sum by(status)(rate(gateway_requests_total[$__rate_interval]))",
-                                           "legendFormat":  "{{status}}",
-                                           "range":  true
-                                       }
-                                   ],
-                       "options":  {
-                                       "legend":  {
-                                                      "displayMode":  "table",
-                                                      "placement":  "bottom"
-                                                  },
-                                       "tooltip":  {
-                                                       "mode":  "multi"
-                                                   }
-                                   }
-                   },
-                   {
-                       "id":  256279,
-                       "type":  "timeseries",
-                       "title":  "CPU Requests",
-                       "gridPos":  {
-                                       "h":  8,
-                                       "w":  12,
-                                       "x":  12,
-                                       "y":  13
-                                   },
-                       "datasource":  {
-                                          "type":  "prometheus",
-                                          "uid":  "prometheus"
-                                      },
-                       "fieldConfig":  {
-                                           "defaults":  {
-                                                            "unit":  "cores"
-                                                        },
-                                           "overrides":  [
-
-                                                         ]
-                                       },
-                       "targets":  [
-                                       {
-                                           "refId":  "A",
-                                           "expr":  "sum by(namespace)(kube_pod_container_resource_requests{resource=\"cpu\",namespace=\"backend\"})",
+                                           "expr":  "sum by (namespace) (increase(kube_pod_container_status_restarts_total[1h]))",
                                            "legendFormat":  "{{namespace}}",
                                            "range":  true
                                        }
@@ -338,54 +454,14 @@
                                    }
                    },
                    {
-                       "id":  913576,
+                       "id":  227077,
                        "type":  "timeseries",
-                       "title":  "Memory Requests",
-                       "gridPos":  {
-                                       "h":  8,
-                                       "w":  12,
-                                       "x":  0,
-                                       "y":  21
-                                   },
-                       "datasource":  {
-                                          "type":  "prometheus",
-                                          "uid":  "prometheus"
-                                      },
-                       "fieldConfig":  {
-                                           "defaults":  {
-                                                            "unit":  "bytes"
-                                                        },
-                                           "overrides":  [
-
-                                                         ]
-                                       },
-                       "targets":  [
-                                       {
-                                           "refId":  "A",
-                                           "expr":  "sum by(namespace)(kube_pod_container_resource_requests{resource=\"memory\",namespace=\"backend\"})",
-                                           "legendFormat":  "{{namespace}}",
-                                           "range":  true
-                                       }
-                                   ],
-                       "options":  {
-                                       "legend":  {
-                                                      "displayMode":  "table",
-                                                      "placement":  "bottom"
-                                                  },
-                                       "tooltip":  {
-                                                       "mode":  "multi"
-                                                   }
-                                   }
-                   },
-                   {
-                       "id":  661142,
-                       "type":  "timeseries",
-                       "title":  "Pod Restarts",
+                       "title":  "Node CPU Usage",
                        "gridPos":  {
                                        "h":  8,
                                        "w":  12,
                                        "x":  12,
-                                       "y":  21
+                                       "y":  18
                                    },
                        "datasource":  {
                                           "type":  "prometheus",
@@ -393,7 +469,7 @@
                                       },
                        "fieldConfig":  {
                                            "defaults":  {
-                                                            "unit":  "short"
+                                                            "unit":  "percent"
                                                         },
                                            "overrides":  [
 
@@ -402,8 +478,8 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "sum by(pod) (increase(kube_pod_container_status_restarts_total{namespace=\"backend\",pod=~\"api-gateway.*\"}[1h]))",
-                                           "legendFormat":  "{{pod}}",
+                                           "expr":  "100 - (avg by(instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+                                           "legendFormat":  "{{instance}}",
                                            "range":  true
                                        }
                                    ],
@@ -418,14 +494,14 @@
                                    }
                    },
                    {
-                       "id":  403932,
-                       "type":  "stat",
-                       "title":  "Gateway 4xx/5xx",
+                       "id":  188820,
+                       "type":  "timeseries",
+                       "title":  "Node Memory Usage",
                        "gridPos":  {
-                                       "h":  5,
-                                       "w":  6,
+                                       "h":  8,
+                                       "w":  12,
                                        "x":  0,
-                                       "y":  29
+                                       "y":  26
                                    },
                        "datasource":  {
                                           "type":  "prometheus",
@@ -433,7 +509,7 @@
                                       },
                        "fieldConfig":  {
                                            "defaults":  {
-                                                            "unit":  "short"
+                                                            "unit":  "percent"
                                                         },
                                            "overrides":  [
 
@@ -442,29 +518,30 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "sum(increase(gateway_requests_total{status=~\"4..|5..\"}[1h])) or vector(0)",
-                                           "legendFormat":  "4xx/5xx",
+                                           "expr":  "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
+                                           "legendFormat":  "{{instance}}",
                                            "range":  true
                                        }
                                    ],
                        "options":  {
-                                       "reduceOptions":  {
-                                                             "calcs":  [
-                                                                           "lastNotNull"
-                                                                       ]
-                                                         },
-                                       "orientation":  "auto"
+                                       "legend":  {
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom"
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi"
+                                                   }
                                    }
                    },
                    {
-                       "id":  869740,
-                       "type":  "stat",
-                       "title":  "Rate Limit Hits",
+                       "id":  712258,
+                       "type":  "timeseries",
+                       "title":  "RabbitMQ Queue Messages",
                        "gridPos":  {
-                                       "h":  5,
-                                       "w":  6,
-                                       "x":  6,
-                                       "y":  29
+                                       "h":  8,
+                                       "w":  12,
+                                       "x":  12,
+                                       "y":  26
                                    },
                        "datasource":  {
                                           "type":  "prometheus",
@@ -481,18 +558,19 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "sum(increase(gateway_requests_total{status=\"429\"}[5m])) or vector(0)",
-                                           "legendFormat":  "429",
+                                           "expr":  "sum by(queue) (rabbitmq_queue_messages)",
+                                           "legendFormat":  "{{queue}}",
                                            "range":  true
                                        }
                                    ],
                        "options":  {
-                                       "reduceOptions":  {
-                                                             "calcs":  [
-                                                                           "lastNotNull"
-                                                                       ]
-                                                         },
-                                       "orientation":  "auto"
+                                       "legend":  {
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom"
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi"
+                                                   }
                                    }
                    }
                ],
@@ -500,8 +578,8 @@
     "schemaVersion":  39,
     "tags":  [
                  "commerce",
-                 "service",
-                 "api-gateway"
+                 "overview",
+                 "end-to-end"
              ],
     "templating":  {
                        "list":  [
@@ -513,7 +591,7 @@
                  "to":  "now"
              },
     "timezone":  "browser",
-    "title":  "02 • API Gateway",
-    "uid":  "api-gateway",
+    "title":  "00 â€¢ Commerce Platform Overview",
+    "uid":  "commerce-platform",
     "version":  1
 }
