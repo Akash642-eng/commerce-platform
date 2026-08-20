@@ -1,0 +1,105 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: monitoring
+data:
+  alerts.yml: |
+    groups:
+    - name: kubernetes.rules
+      rules:
+      - alert: PodCrashLoopBackOff
+        expr: kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"} == 1
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "Pod CrashLoopBackOff"
+          description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is in CrashLoopBackOff."
+      - alert: PodRestartingFrequently
+        expr: increase(kube_pod_container_status_restarts_total[10m]) > 3
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "Pod restarting frequently"
+          description: "Pod {{ $labels.pod }} restarted more than 3 times in 10 minutes."
+      - alert: PodNotReady
+        expr: kube_pod_status_ready{condition="true"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "Pod not ready"
+          description: "Pod {{ $labels.pod }} is not Ready."
+      - alert: DeploymentUnavailable
+        expr: kube_deployment_status_replicas_available < kube_deployment_spec_replicas
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "Deployment unavailable"
+          description: "Deployment {{ $labels.deployment }} has unavailable replicas."
+    - name: infrastructure.rules
+      rules:
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance)(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage above 85% on {{ $labels.instance }}."
+      - alert: HighMemoryUsage
+        expr: ((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes) * 100 > 85
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage above 85% on {{ $labels.instance }}."
+    - name: platform.health.rules
+      rules:
+      - alert: ServiceDown
+        expr: up{job=~"api-gateway|auth-service|user-service|product-service|inventory-service|cart-service|order-service|payment-service|delivery-service|notification-service|support-service"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "Commerce service down"
+          description: "{{ $labels.job }} has been unreachable for more than 2 minutes."
+      - alert: RabbitMQDown
+        expr: up{job="rabbitmq"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: "RabbitMQ is down"}
+      - alert: PostgreSQLExporterDown
+        expr: up{job="postgres"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: "PostgreSQL exporter is down"}
+      - alert: RedisExporterDown
+        expr: up{job="redis"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: "Redis exporter is down"}
+    - name: commerce.business.rules
+      rules:
+      - alert: PaymentFailuresHigh
+        expr: sum(increase(payment_failure_total[5m])) > 10
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: "High payment failure rate"}
+      - alert: OrderFailuresHigh
+        expr: sum(increase(orders_failed_total[5m])) > 5
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: "High order failure rate"}
+      - alert: DLQMessagesGrowing
+        expr: sum(increase(dlq_total[5m])) > 5
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: "Dead letter queue events increasing"}
+      - alert: RetryStorm
+        expr: sum(increase(retry_total[5m])) > 20
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: "Large number of retries detected"}
+      - alert: EventFailuresHigh
+        expr: sum(increase(events_failed_total[5m])) > 10
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: "High event failure rate"}
