@@ -322,8 +322,8 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "sum by(pod)(rate(container_cpu_usage_seconds_total{namespace=\"backend\",pod=~\"auth-service.*\",container!=\"\"}[$__rate_interval]))",
-                                           "legendFormat":  "{{pod}}",
+                                           "expr":  "sum by(namespace)(kube_pod_container_resource_requests{resource=\"cpu\",namespace=\"backend\",pod=~\"auth-service.*\"})",
+                                           "legendFormat":  "CPU requests",
                                            "range":  true
                                        }
                                    ],
@@ -362,8 +362,8 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "sum by(pod)(container_memory_working_set_bytes{namespace=\"backend\",pod=~\"auth-service.*\",container!=\"\"})",
-                                           "legendFormat":  "{{pod}}",
+                                           "expr":  "sum by(namespace)(kube_pod_container_resource_requests{resource=\"memory\",namespace=\"backend\",pod=~\"auth-service.*\"})",
+                                           "legendFormat":  "Memory requests",
                                            "range":  true
                                        }
                                    ],
@@ -433,7 +433,7 @@
                                       },
                        "fieldConfig":  {
                                            "defaults":  {
-                                                            "unit":  "reqps"
+                                                            "unit":  "short"
                                                         },
                                            "overrides":  [
 
@@ -442,8 +442,8 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "sum(rate(http_requests_total{job=\"auth-service\",handler=\"/auth/login\",method=\"POST\"}[$__rate_interval]))",
-                                           "legendFormat":  "login",
+                                           "expr":  "sum(increase(http_requests_total{job=\"auth-service\",handler=\"/auth/login\",method=\"POST\"}[1h])) or vector(0)",
+                                           "legendFormat":  "login requests",
                                            "range":  true
                                        }
                                    ],
@@ -472,7 +472,7 @@
                                       },
                        "fieldConfig":  {
                                            "defaults":  {
-                                                            "unit":  "reqps"
+                                                            "unit":  "short"
                                                         },
                                            "overrides":  [
 
@@ -481,7 +481,7 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "sum(rate(http_requests_total{job=\"auth-service\",handler=\"/auth/login\",method=\"POST\",status=~\"4xx|5xx\"}[$__rate_interval]))",
+                                           "expr":  "sum(increase(http_requests_total{job=\"auth-service\",handler=\"/auth/login\",method=\"POST\",status=~\"4xx|5xx\"}[1h])) or vector(0)",
                                            "legendFormat":  "failed login",
                                            "range":  true
                                        }
@@ -511,7 +511,7 @@
                                       },
                        "fieldConfig":  {
                                            "defaults":  {
-                                                            "unit":  "reqps"
+                                                            "unit":  "short"
                                                         },
                                            "overrides":  [
 
@@ -520,8 +520,8 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "sum(rate(http_requests_total{job=\"auth-service\",handler=\"/auth/me\",method=\"GET\"}[$__rate_interval]))",
-                                           "legendFormat":  "auth/me",
+                                           "expr":  "sum(increase(http_requests_total{job=\"auth-service\",handler=\"/auth/me\",method=\"GET\"}[1h])) or vector(0)",
+                                           "legendFormat":  "auth/me requests",
                                            "range":  true
                                        }
                                    ],
@@ -550,7 +550,7 @@
                                       },
                        "fieldConfig":  {
                                            "defaults":  {
-                                                            "unit":  "reqps"
+                                                            "unit":  "short"
                                                         },
                                            "overrides":  [
 
@@ -559,7 +559,7 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "sum(rate(http_requests_total{job=\"auth-service\",handler=\"/auth/me\",method=\"GET\",status=~\"4xx|5xx\"}[$__rate_interval]))",
+                                           "expr":  "sum(increase(http_requests_total{job=\"auth-service\",handler=\"/auth/me\",method=\"GET\",status=~\"4xx|5xx\"}[1h])) or vector(0)",
                                            "legendFormat":  "failed auth/me",
                                            "range":  true
                                        }
@@ -591,7 +591,7 @@
                  "to":  "now"
              },
     "timezone":  "browser",
-    "title":  "03 • Auth Service",
+    "title":  "03 Ã¢â‚¬Â¢ Auth Service",
     "uid":  "auth-service",
     "version":  1
 }

@@ -46,8 +46,8 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "up{job=\"api-gateway\"}",
-                                           "legendFormat":  "{{job}}",
+                                           "expr":  "max(up{job=~\".*gateway.*\"}) or vector(0)",
+                                           "legendFormat":  "gateway",
                                            "range":  true
                                        }
                                    ],
@@ -85,7 +85,7 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "sum(rate(gateway_requests_total[$__rate_interval]))",
+                                           "expr":  "sum(rate(http_requests_total{job=~\".*gateway.*\"}[$__rate_interval])) or vector(0)",
                                            "legendFormat":  "requests/sec",
                                            "range":  true
                                        }
@@ -124,7 +124,7 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "histogram_quantile(0.95, sum by(le)(rate(gateway_request_latency_seconds_bucket[$__rate_interval])))",
+                                           "expr":  "histogram_quantile(0.95, sum by (le)(rate(http_request_duration_seconds_bucket{job=~\".*gateway.*\"}[$__rate_interval]))) or vector(0)",
                                            "legendFormat":  "p95",
                                            "range":  true
                                        }
@@ -163,7 +163,7 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "sum(increase(gateway_requests_total{status=~\"4..|5..\"}[1h])) or vector(0)",
+                                           "expr":  "sum(increase(http_requests_total{job=~\".*gateway.*\",status=~\"4xx|5xx\"}[1h])) or vector(0)",
                                            "legendFormat":  "4xx/5xx",
                                            "range":  true
                                        }
@@ -202,8 +202,8 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "sum by(endpoint)(rate(gateway_requests_total[$__rate_interval]))",
-                                           "legendFormat":  "{{endpoint}}",
+                                           "expr":  "sum by(handler)(rate(http_requests_total{job=~\".*gateway.*\"}[$__rate_interval])) or vector(0)",
+                                           "legendFormat":  "{{handler}}",
                                            "range":  true
                                        }
                                    ],
@@ -242,8 +242,8 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "histogram_quantile(0.95, sum by(le, endpoint)(rate(gateway_request_latency_seconds_bucket[$__rate_interval])))",
-                                           "legendFormat":  "{{endpoint}}",
+                                           "expr":  "histogram_quantile(0.95, sum by (le, handler)(rate(http_request_duration_seconds_bucket{job=~\".*gateway.*\"}[$__rate_interval]))) or vector(0)",
+                                           "legendFormat":  "{{handler}}",
                                            "range":  true
                                        }
                                    ],
@@ -282,7 +282,7 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "sum by(status)(rate(gateway_requests_total[$__rate_interval]))",
+                                           "expr":  "sum by(status)(rate(http_requests_total{job=~\".*gateway.*\"}[$__rate_interval])) or vector(0)",
                                            "legendFormat":  "{{status}}",
                                            "range":  true
                                        }
@@ -402,7 +402,7 @@
                        "targets":  [
                                        {
                                            "refId":  "A",
-                                           "expr":  "sum by(pod) (increase(kube_pod_container_status_restarts_total{namespace=\"backend\",pod=~\"api-gateway.*\"}[1h]))",
+                                           "expr":  "sum by(pod)(increase(kube_pod_container_status_restarts_total{namespace=\"backend\",pod=~\"api-gateway.*\"}[1h])) or vector(0)",
                                            "legendFormat":  "{{pod}}",
                                            "range":  true
                                        }
@@ -513,7 +513,7 @@
                  "to":  "now"
              },
     "timezone":  "browser",
-    "title":  "02 • API Gateway",
+    "title":  "02 â€¢ API Gateway",
     "uid":  "api-gateway",
     "version":  1
 }
